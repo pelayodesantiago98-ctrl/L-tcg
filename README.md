@@ -147,6 +147,25 @@ dejaría el hueco vacío para siempre.
 que pudiera arrancar la bajada del catálogo. El resto necesita `CLAVE_REGISTRO`;
 si esa variable falta, el registro queda **cerrado**, que es el fallo seguro.
 
+## Versiones de los estaticos
+
+El index no se sirve tal cual: el servidor le mete en la URL del CSS y del JS
+la fecha del fichero (`?v=<mtime>`). Sin eso, los estaticos van con una hora de
+cache y **un cambio tarda esa hora en verse**. Paso al anadir el selector de
+cartas: la regla nueva no llegaba al navegador y el dialogo salia sin estilos,
+con el agravante de que parecia un fallo del codigo y no de la cache.
+
+Dos detalles que costaron un intento cada uno:
+
+- `express.static` sirve `public/index.html` para `/` antes de llegar a la ruta
+  que hace la sustitucion. Va con `index: false`.
+- La firma que decide si hay que regenerar el HTML incluye la fecha del index
+  **y la de cada estatico**. Con solo la del index, tocar el CSS no refrescaba
+  nada, que es justo lo que esto venia a arreglar.
+
+El index se sirve con `Cache-Control: no-cache` porque es quien lleva las
+versiones de lo demas.
+
 ## Configuración
 
 `.env` con permisos 600, nunca en el repositorio:

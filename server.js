@@ -45,6 +45,10 @@ app.use('/api/admin', require('./routes/admin'));
 /* Los estáticos con caché corta y versión por fecha de fichero: así un cambio
    de CSS se ve sin tener que explicarle a nadie cómo se vacía la caché. */
 app.use(express.static(path.join(__dirname, 'public'), {
+  // Sin esto, express.static sirve public/index.html para "/" antes de que la
+  // peticion llegue a la ruta de abajo, y el index saldria sin las versiones
+  // de los estaticos y con la cabecera de cache equivocada.
+  index: false,
   etag: true, lastModified: true, maxAge: '1h',
   setHeaders: (res, ruta) => {
     if (/\.(png|jpg|svg|webmanifest|ico)$/.test(ruta)) res.setHeader('Cache-Control', 'public, max-age=604800');
@@ -52,12 +56,57 @@ app.use(express.static(path.join(__dirname, 'public'), {
   },
 }));
 
+/*
+ * El index se sirve con la fecha de cada estático metida en su URL.
+ *
+ * Los estáticos van con una hora de caché, y sin número de versión un cambio
+ * de CSS tarda esa hora en verse: el navegador reutiliza el que ya tiene y
+ * Cloudflare puede tener el suyo. Pasó justo eso al añadir el selector de
+ * cartas: la regla nueva no llegaba y el diálogo salía sin estilos, con el
+ * agravante de que parecía un fallo del código y no de la caché.
+ *
+ * Con ?v=<fecha del fichero> la URL cambia cuando cambia el contenido, así que
+ * la caché sigue siendo de una hora pero deja de estorbar.
+ */
+const ESTATICOS_VERSIONADOS = ['/css/estilo.css', '/js/app.js'];
+let indexCache = null;
+
+function indexHtml() {
+  const ruta = path.join(__dirname, 'public', 'index.html');
+
+  /*
+   * La firma incluye la fecha del index Y la de cada estatico. Al principio
+   * solo miraba la del index, y entonces cambiar el CSS no refrescaba nada:
+   * el HTML seguia saliendo de memoria con la version vieja, que es
+   * exactamente el problema que esto venia a resolver.
+   *
+   * Son tres statSync por peticion del index. A 0,6 ms de respuesta eso no se
+   * nota, y solo afecta al HTML, no a los estaticos ni a la API.
+   */
+  const versiones = {};
+  for (const est of ESTATICOS_VERSIONADOS) {
+    try { versiones[est] = Math.floor(fs.statSync(path.join(__dirname, 'public', est)).mtimeMs); }
+    catch { versiones[est] = 0; }
+  }
+  const firma = [fs.statSync(ruta).mtimeMs, ...ESTATICOS_VERSIONADOS.map((e) => versiones[e])].join('|');
+  if (indexCache && indexCache.firma === firma) return indexCache.html;
+
+  let html = fs.readFileSync(ruta, 'utf8');
+  for (const est of ESTATICOS_VERSIONADOS) {
+    if (versiones[est]) html = html.split(est + '"').join(`${est}?v=${versiones[est]}"`);
+  }
+  indexCache = { firma, html };
+  return html;
+}
+
 // Aplicación de una sola página: cualquier ruta que no sea API devuelve el
-// index y el enrutado lo hace el navegador. Sin esto, recargar en /binder da
+// index y el enrutado lo hace el navegador. Sin esto, recargar en /album da
 // un 404 y la PWA se rompe al abrirse desde el icono.
 app.get(/^(?!\/api\/).*/, (req, res, next) => {
   if (req.method !== 'GET') return next();
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  // El index nunca se cachea: es quien lleva las versiones de lo demás.
+  res.set('Cache-Control', 'no-cache');
+  res.type('html').send(indexHtml());
 });
 
 app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada.' }));
