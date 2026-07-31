@@ -13,3 +13,7 @@ data/imagenes/
 node_modules/
 npm-debug.log*
 *.tmp
+
+# Restos del primer intento de generar iconos con rsvg, que no esta instalado.
+# Los PNG los produce herramientas-iconos.js, que es la fuente de verdad.
+public/img/*.svg

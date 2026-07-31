@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#161614"/>
-  <g transform="rotate(-12 256 256)">
-    <rect x="150" y="104" width="212" height="296" rx="20" fill="#5fae85"/>
-    <rect x="168" y="122" width="176" height="180" rx="10" fill="#161614" opacity="0.28"/>
-  </g>
-  <text x="256" y="330" font-family="DejaVu Sans, sans-serif" font-size="188"
-        font-weight="bold" fill="#161614" text-anchor="middle">L</text>
-</svg>
