@@ -1,0 +1,15 @@
+# Secretos: clave de la API, secreto JWT y clave de registro.
+.env
+
+# Datos de los usuarios: sus colecciones, sus álbumes y sus cuentas.
+data/l-tcg.sqlite3
+data/l-tcg.sqlite3-wal
+data/l-tcg.sqlite3-shm
+
+# Cache de imagenes. Una carta ronda los 15 KB en baja y 150 KB en alta; con
+# el catalogo entero esto llega a varios GB y ademas se regenera solo.
+data/imagenes/
+
+node_modules/
+npm-debug.log*
+*.tmp
