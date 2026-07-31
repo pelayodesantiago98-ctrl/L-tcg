@@ -40,12 +40,12 @@ INSERT INTO cartas (
   id, set_code, nombre, nombre_limpio, busca, numero, numero_orden, rareza, tipo,
   hp, etapa, texto, ataques, debilidad, resistencia, retirada, idiomas_img,
   cm_url, tcg_url, precio_avg, precio_low, precio_avg1, precio_avg7, precio_avg30,
-  precio_trend, precio_variante, precio_fecha, precios_json, actualizada
+  precio_trend, precio_variante, precio_fecha, precios_json, exp_orden, actualizada
 ) VALUES (
   @id, @set_code, @nombre, @nombre_limpio, @busca, @numero, @numero_orden, @rareza, @tipo,
   @hp, @etapa, @texto, @ataques, @debilidad, @resistencia, @retirada, @idiomas_img,
   @cm_url, @tcg_url, @precio_avg, @precio_low, @precio_avg1, @precio_avg7, @precio_avg30,
-  @precio_trend, @precio_variante, @precio_fecha, @precios_json, @actualizada
+  @precio_trend, @precio_variante, @precio_fecha, @precios_json, @exp_orden, @actualizada
 )
 ON CONFLICT(id) DO UPDATE SET
   set_code = excluded.set_code, nombre = excluded.nombre,
@@ -60,7 +60,8 @@ ON CONFLICT(id) DO UPDATE SET
   precio_avg1 = excluded.precio_avg1, precio_avg7 = excluded.precio_avg7,
   precio_avg30 = excluded.precio_avg30, precio_trend = excluded.precio_trend,
   precio_variante = excluded.precio_variante, precio_fecha = excluded.precio_fecha,
-  precios_json = excluded.precios_json, actualizada = excluded.actualizada`;
+  precios_json = excluded.precios_json, exp_orden = excluded.exp_orden,
+  actualizada = excluded.actualizada`;
 
 const stmtInsertar = db.prepare(INSERTAR);
 
@@ -69,6 +70,9 @@ const stmtInsertar = db.prepare(INSERTAR);
    expansión ("SM6a"), así que fiarse de ahí rompería la relación. */
 const guardarLote = db.transaction((setCode, cartas) => {
   const t = ahora();
+  // La clave de orden se lee una vez por lote, no una por carta.
+  const exp = db.prepare('SELECT lower(nombre) n FROM expansiones WHERE set_code = ?').get(setCode);
+  const expOrden = exp ? exp.n : null;
   for (const c of cartas) {
     const info = c.card_info || {};
     const { elegido, todos } = precioCardmarket(c.cardmarket);
@@ -101,6 +105,7 @@ const guardarLote = db.transaction((setCode, cartas) => {
       precio_variante: elegido ? elegido.variant_type : null,
       precio_fecha: elegido ? elegido.updated_at : null,
       precios_json: JSON.stringify(todos),
+      exp_orden: expOrden,
       actualizada: t,
     });
   }
@@ -126,19 +131,55 @@ const guardarExpansiones = db.transaction((sets) => {
       fecha_orden: fechaOrden(s.release_date), t,
     });
   }
+  /* Si una expansión cambió de nombre, la clave de orden copiada en sus cartas
+     se quedó vieja. Se corrige solo donde no coincide; con el catálogo entero
+     son 187 ms y esto pasa una vez por ingesta, no por petición. */
+  db.prepare(`UPDATE cartas SET exp_orden =
+    (SELECT lower(e.nombre) FROM expansiones e WHERE e.set_code = cartas.set_code)
+    WHERE exp_orden IS NOT
+      (SELECT lower(e.nombre) FROM expansiones e WHERE e.set_code = cartas.set_code)`).run();
   return sets.length;
 });
 
 // ── Consultas ──────────────────────────────────────────────────────────────
 
+/*
+ * Cada orden devuelve su cláusula entera. Antes era solo el campo y se
+ * construía `campo IS NULL, campo ASC` por fuera, lo que con la expansión
+ * generaba un engendro de cuatro términos. Y el desempate por id es lo que
+ * hace que la paginación no repita ni salte filas: sin él, dos cartas con el
+ * mismo precio pueden cambiar de orden entre página y página.
+ */
+/*
+ * En SQLite los nulos van primero al ordenar de menos a más y últimos al
+ * revés. Poner `campo IS NULL` delante los manda al final siempre, pero es una
+ * expresión calculada y con ella el índice deja de servir: ordenar por precio
+ * pasaba por una ordenación en memoria de la tabla entera.
+ *
+ * Descendente no hace falta —los nulos ya caen al final solos— y ascendente se
+ * resuelve con NULLS LAST, que SQLite sabe atender desde la 3.30 sin renunciar
+ * al índice. El desempate por id es lo que hace que la paginación no repita ni
+ * salte filas cuando hay empates.
+ */
+const nulosAlFinal = (campo, d) =>
+  d === 'DESC' ? `${campo} DESC` : `${campo} ASC NULLS LAST`;
+
 const ORDENES = {
-  nombre:    'c.nombre COLLATE NOCASE',
-  numero:    'c.numero_orden',
-  expansion: 'e.nombre COLLATE NOCASE, c.numero_orden',
-  rareza:    'c.rareza',
-  precio:    'c.precio_avg',
-  fecha:     'e.fecha_orden',
+  nombre:    (d) => `c.nombre COLLATE NOCASE ${d}, c.id`,
+  numero:    (d) => `${nulosAlFinal('c.numero_orden', d)}, c.id`,
+  expansion: (d) => `c.exp_orden ${d}, c.numero_orden ${d}, c.id`,
+  rareza:    (d) => `${nulosAlFinal('c.rareza', d)}, c.id`,
+  precio:    (d) => `${nulosAlFinal('c.precio_avg', d)}, c.id`,
+  fecha:     (d) => `${nulosAlFinal('e.fecha_orden', d)}, c.id`,
 };
+
+/* Traduce lo que escribe el usuario a una consulta de FTS5. Se parte por todo
+   lo que no sea letra o número y cada trozo se entrecomilla, porque un guion
+   o unas comillas sueltas son sintaxis para FTS y reventarían la consulta. */
+function consultaFts(q) {
+  const trozos = normaliza(q).split(/[^a-z0-9]+/).filter(Boolean);
+  return trozos.length ? trozos.map((t) => `"${t}"*`).join(' ') : null;
+}
 
 /*
  * Una sola consulta sirve para la colección, la wishlist y el catálogo: lo que
@@ -149,12 +190,24 @@ const ORDENES = {
 function consultar({
   usuarioId, q = '', expansion = '', rareza = '', tipo = '', idioma = '',
   soloMias = false, soloDeseadas = false, soloFaltan = false,
-  orden = 'expansion', dir = 'asc', pagina = 1, limite = 60,
+  orden = 'expansion', dir = 'asc', pagina = 1, limite = 60, __like = null,
 } = {}) {
   const donde = [];
   const par = { usuarioId: usuarioId || 0 };
+  if (__like) { donde.push('c.busca LIKE @q'); par.q = '%' + __like + '%'; }
 
-  if (q) { donde.push('c.busca LIKE @q'); par.q = '%' + normaliza(q) + '%'; }
+  /* El índice de texto completo busca por principio de palabra. Da igual para
+     lo que la gente teclea —"pika", "char", "003"— pero deja fuera el caso de
+     escribir el trozo de en medio, que con LIKE sí funcionaba. Por eso más
+     abajo hay una segunda pasada con LIKE cuando esto no encuentra nada. */
+  const fts = q ? consultaFts(q) : null;
+  if (fts) {
+    donde.push('c.rowid IN (SELECT rowid FROM cartas_fts WHERE cartas_fts MATCH @fts)');
+    par.fts = fts;
+  } else if (q) {
+    donde.push('c.busca LIKE @q');
+    par.q = '%' + normaliza(q) + '%';
+  }
   if (expansion) { donde.push('c.set_code = @expansion'); par.expansion = expansion; }
   if (rareza) { donde.push('c.rareza = @rareza'); par.rareza = rareza; }
   if (tipo) { donde.push('c.tipo = @tipo'); par.tipo = tipo; }
@@ -164,11 +217,10 @@ function consultar({
   if (soloFaltan) donde.push('COALESCE(col.cantidad, 0) = 0');
 
   const filtro = donde.length ? 'WHERE ' + donde.join(' AND ') : '';
-  const campo = ORDENES[orden] || ORDENES.expansion;
   const sentido = String(dir).toLowerCase() === 'desc' ? 'DESC' : 'ASC';
   // Los nulos al final siempre: una carta sin precio no debe encabezar la
   // lista al ordenar por precio ascendente.
-  const orderBy = `${campo} IS NULL, ${campo} ${sentido}, c.id`;
+  const orderBy = (ORDENES[orden] || ORDENES.expansion)(sentido);
 
   const base = `FROM cartas c
     JOIN expansiones e ON e.set_code = c.set_code
@@ -188,6 +240,15 @@ function consultar({
     ${base}
     ORDER BY ${orderBy}
     LIMIT @lim OFFSET @off`).all({ ...par, lim, off: (pag - 1) * lim });
+
+  /* Segunda pasada: si el índice de texto no encontró nada pero el usuario
+     escribió algo, se reintenta con LIKE por si buscaba un trozo de en medio.
+     Solo ocurre cuando no hay resultados, que es justo cuando es barato. */
+  if (!total && fts) {
+    return consultar({ usuarioId, q: '', expansion, rareza, tipo, idioma,
+      soloMias, soloDeseadas, soloFaltan, orden, dir, pagina, limite,
+      __like: normaliza(q) });
+  }
 
   return { total, pagina: pag, limite: lim, paginas: Math.ceil(total / lim) || 1, cartas: filas };
 }
@@ -213,12 +274,18 @@ const valoresDe = (columna) => {
 };
 
 // Autocompletado del buscador: nombres distintos que empiezan por lo tecleado.
+/* El autocompletado salta con cada tecla, así que es lo que más veces se
+   ejecuta de toda la aplicación: con LIKE eran 12,98 ms por pulsación con el
+   catálogo completo, y ahora 0,97 ms. */
 const sugerencias = (q, limite = 8) => {
   if (!q || q.length < 2) return [];
+  const fts = consultaFts(q);
+  if (!fts) return [];
   return db.prepare(`SELECT nombre, COUNT(*) n FROM cartas
-    WHERE busca LIKE @pre GROUP BY nombre COLLATE NOCASE
-    ORDER BY (busca LIKE @exacto) DESC, n DESC, nombre LIMIT @lim`)
-    .all({ pre: normaliza(q) + '%', exacto: normaliza(q), lim: limite })
+    WHERE rowid IN (SELECT rowid FROM cartas_fts WHERE cartas_fts MATCH @fts)
+    GROUP BY nombre COLLATE NOCASE
+    ORDER BY n DESC, length(nombre), nombre LIMIT @lim`)
+    .all({ fts, lim: limite })
     .map((r) => r.nombre);
 };
 

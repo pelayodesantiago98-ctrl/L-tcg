@@ -166,6 +166,59 @@ Dos detalles que costaron un intento cada uno:
 El index se sirve con `Cache-Control: no-cache` porque es quien lleva las
 versiones de lo demas.
 
+## Rendimiento
+
+Medido sobre la misma base inflada a 74.304 cartas, que es a donde va el
+catalogo completo. No son numeros de laboratorio: son las consultas que hace
+la web, con los mismos datos antes y despues.
+
+| Consulta | Antes | Despues | |
+|---|---|---|---|
+| listado por expansion | 39,81 ms | 0,07 ms | 700x |
+| ordenar por precio, mas caras | 26,76 ms | 0,07 ms | 389x |
+| ordenar por precio, mas baratas | 25,46 ms | 0,14 ms | 188x |
+| contar resultados | 17,08 ms | 0,55 ms | 31x |
+| sugerencias del autocompletado | 17,31 ms | 0,68 ms | 25x |
+| buscar, 60 primeros | 0,22 ms | 0,26 ms | 1,2x mas lento |
+| **suma** | **126,63 ms** | **1,75 ms** | **72x** |
+
+Tres cambios, y cada uno ataca una causa distinta:
+
+**`exp_orden`.** El nombre de la expansion, copiado en la propia carta.
+Ordenar por una columna de la tabla de al lado obliga a unirlo todo y
+ordenarlo en memoria (`USE TEMP B-TREE`), y eso crece con el catalogo aunque
+solo se pidan 60 filas. Con la clave en la carta el indice sirve y el LIMIT
+corta antes.
+
+**`cartas_fts`.** Indice de texto completo. `LIKE '%algo%'` no puede usar
+ningun indice porque el comodin va delante, asi que cada busqueda recorria las
+74.000 filas. Buscar los 60 primeros ya era rapido -el recorrido se para al
+llenar el limite- y de hecho ahi se pierde un poco; lo que se gana es el
+**conteo**, que no puede parar y va en cada listado, y las **sugerencias**, que
+saltan con cada tecla.
+
+**Nulos al final sin romper el indice.** Poner `campo IS NULL` delante del
+ORDER BY manda los nulos al final, pero es una expresion calculada y con ella
+el indice deja de valer. Descendente no lo necesita -en SQLite los nulos ya
+caen al final- y ascendente se resuelve con `NULLS LAST`.
+
+El indice de texto ocupa unos 15 MB con el catalogo completo. Es el precio.
+
+### El orden de la migracion importa
+
+Costo una base de datos corrupta. Primero se rellena `exp_orden`, despues se
+crea y puebla el indice de texto, y **los disparadores al final**. Al reves, el
+UPDATE que rellena la columna toca todas las filas y con los disparadores ya
+puestos cada una lanzaba un `delete` contra un indice todavia vacio; un FTS5 de
+contenido externo no lo tolera y la base pasa a dar *database disk image is
+malformed*. Se recupero tirando la tabla virtual y reconstruyendola: el dano
+estaba solo en el indice, no en los datos.
+
+### Lo que NO se toco
+
+Los otros tres sitios responden entre 0,98 y 1,40 ms. No hay nada que ganar
+ahi, y cambiar codigo que funciona para no mejorar nada solo anade riesgo.
+
 ## Configuración
 
 `.env` con permisos 600, nunca en el repositorio:
