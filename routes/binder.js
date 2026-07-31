@@ -83,6 +83,28 @@ router.post('/:id/mover', (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/* Añadir una carta al primer hueco libre. Devuelve además la página donde
+   cayó, para que la web pueda saltar hasta allí y enseñarla. */
+router.post('/:id/anadir', (req, res, next) => {
+  try {
+    const b = miBinder(req, res); if (!b) return;
+    const { cartaId, cantidad } = req.body || {};
+    if (!cartaId) return res.status(400).json({ error: 'Falta la carta.' });
+    if (!Card.porId(cartaId)) return res.status(404).json({ error: 'No existe esa carta.' });
+
+    const sitio = Binder.anadir(b, cartaId);
+    if (!sitio) return res.status(409).json({ error: 'El álbum está lleno. Añade páginas y vuelve a intentarlo.' });
+
+    // Meter una carta en el álbum casi siempre significa que se tiene, así
+    // que se marca en la colección salvo que ya hubiera una cantidad puesta.
+    const actual = Card.porId(cartaId, req.usuario.id);
+    if (!actual.cantidad) {
+      Card.marcar(req.usuario.id, cartaId, { cantidad: Math.max(parseInt(cantidad, 10) || 1, 1) });
+    }
+    res.json({ ...sitio, pagina_datos: Binder.pagina(b.id, req.usuario.id, sitio.pagina) });
+  } catch (e) { next(e); }
+});
+
 // Rellenar con una expansión entera: colocar 200 cartas a mano no lo hace nadie.
 router.post('/:id/rellenar', (req, res, next) => {
   try {

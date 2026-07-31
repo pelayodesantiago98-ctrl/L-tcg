@@ -59,6 +59,39 @@ No todas son JPEG: hay bastantes PNG. El formato se deduce de los bytes de
 cabecera y el fichero se guarda con la extensión que le toca; anunciar un PNG
 como `image/jpeg` con `nosniff` puesto en nginx es pedir problemas.
 
+## Las tres pantallas de cartas
+
+Tienen la misma consulta debajo y solo cambia un filtro, pero son cosas
+distintas:
+
+| | Qué enseña |
+|---|---|
+| **Enciclopedia** | el catálogo entero, decenas de miles de cartas |
+| **Mi colección** | solo las que el usuario tiene (`cantidad > 0`) |
+| **Deseadas** | lo que le falta y quiere |
+
+Al principio la colección enseñaba el catálogo completo con una casilla de
+«solo las que tengo», y era el error de fondo: entrar en «tu colección» y ver
+68.000 cartas ajenas no dice nada de la tuya.
+
+**El buscador de cada lista filtra lo que ya se está viendo.** Para añadir hay
+otro distinto, el selector (`abrirSelector`), que busca en el catálogo entero
+independientemente de la pantalla desde la que se abra. Son dos búsquedas con
+propósitos opuestos y por eso están separadas.
+
+En la colección cada tarjeta lleva sus botones de cantidad. Van dentro de la
+tarjeta, que abre la ficha al pulsarla, así que el manejador **para la
+propagación**: sin eso, subir la cantidad abría también la ficha. Cuando la
+cantidad llega a cero la carta deja de ser «mía» y se recarga la lista para que
+no quede una tarjeta fantasma.
+
+En el álbum se puede añadir de dos formas: el botón busca en el catálogo y
+coloca la carta en el primer hueco libre —y salta a esa página, porque si no
+uno añade una carta y no ve que haya pasado nada al haber ido a parar a la
+página 7—, o se pulsa directamente un hueco negro para elegir qué poner ahí.
+Meter una carta en el álbum marca también que se tiene, salvo que ya hubiera
+una cantidad puesta.
+
 ## Por qué SQLite y no MongoDB
 
 La idea inicial era MongoDB + Mongoose. En el servidor **no hay ninguna base de

@@ -111,6 +111,41 @@ const mover = db.transaction((binderId, desde, hasta) => {
   return { movida: cartaA, intercambiada: cartaB };
 });
 
+/*
+ * El primer hueco libre del álbum, recorriendo páginas en orden. Es lo que
+ * hace falta para "añadir esta carta" sin pedirle al usuario que elija sitio:
+ * la carta cae donde toca y luego ya la arrastra si quiere.
+ *
+ * Se leen los huecos ocupados de una vez y se busca en memoria; ir preguntando
+ * hueco por hueco serían cientos de consultas en un álbum grande.
+ */
+function primerHuecoLibre(binderId, slotsPorPagina, paginas) {
+  const ocupados = new Set(db.prepare(
+    'SELECT pagina, hueco FROM binder_slots WHERE binder_id = ? AND carta_id IS NOT NULL')
+    .all(binderId).map((f) => `${f.pagina}:${f.hueco}`));
+  for (let p = 1; p <= paginas; p++) {
+    for (let h = 0; h < slotsPorPagina; h++) {
+      if (!ocupados.has(`${p}:${h}`)) return { pagina: p, hueco: h };
+    }
+  }
+  return null;   // álbum lleno
+}
+
+/* Añade una carta al primer sitio libre. Si ya estaba en el álbum se devuelve
+   dónde, en vez de duplicarla: tener dos veces la misma carta en el álbum es
+   casi siempre un despiste, y el usuario ya lleva la cuenta de cuántas tiene
+   en su colección. */
+function anadir(binder, cartaId) {
+  const ya = db.prepare(
+    'SELECT pagina, hueco FROM binder_slots WHERE binder_id = ? AND carta_id = ? LIMIT 1')
+    .get(binder.id, cartaId);
+  if (ya) return { ...ya, repetida: true };
+  const libre = primerHuecoLibre(binder.id, binder.slots_por_pagina, binder.paginas);
+  if (!libre) return null;
+  poner(binder.id, libre.pagina, libre.hueco, cartaId);
+  return { ...libre, repetida: false };
+}
+
 /* Rellena el álbum con una expansión entera, en orden de número. Es lo que
    convierte el binder en algo usable: nadie va a colocar 200 cartas a mano. */
 const rellenarConExpansion = db.transaction((binderId, setCode, desdePagina, slotsPorPagina) => {
@@ -128,4 +163,5 @@ const rellenarConExpansion = db.transaction((binderId, setCode, desdePagina, slo
 module.exports = {
   DISTRIBUCIONES, PERMITIDOS, listar, porId, crear, borrar, renombrar,
   pagina, poner, vaciar, mover, rellenarConExpansion,
+  primerHuecoLibre, anadir,
 };

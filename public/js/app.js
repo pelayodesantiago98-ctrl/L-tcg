@@ -43,8 +43,9 @@ const sesion = { usuario: null, filtros: null };
 const RUTAS = {
   '/entrar': vistaEntrada,
   '/registro': vistaRegistro,
-  '/coleccion': vistaColeccion,
-  '/deseadas': (p) => vistaColeccion(p, { deseadas: true }),
+  '/coleccion': (p) => vistaColeccion(p, { modo: 'mias' }),
+  '/enciclopedia': (p) => vistaColeccion(p, { modo: 'todas' }),
+  '/deseadas': (p) => vistaColeccion(p, { modo: 'deseadas' }),
   '/album': vistaAlbum,
   '/perfil': vistaPerfil,
   '/admin': vistaAdmin,
@@ -193,13 +194,44 @@ function vistaRegistro() {
 
 const estadoLista = {
   q: '', expansion: '', rareza: '', tipo: '', orden: 'expansion', dir: 'asc',
-  mias: false, deseadas: false, faltan: false, pagina: 1,
+  mias: false, deseadas: false, faltan: false, pagina: 1, modo: 'todas',
+};
+
+/*
+ * Tres pantallas con la misma consulta debajo; lo único que cambia es un
+ * filtro. La enciclopedia enseña el catálogo entero —decenas de miles de
+ * cartas— y la colección solo lo que uno tiene, que es lo que se mira a
+ * diario. Mezclarlas era el problema: entrar en "colección" y ver 68.000
+ * cartas ajenas no dice nada de la tuya.
+ */
+const MODOS = {
+  todas: {
+    titulo: 'Enciclopedia',
+    sub: 'Todas las cartas que existen. Desde aquí las añades a tu colección.',
+    vacio: 'No hay cartas que encajen.',
+  },
+  mias: {
+    titulo: 'Mi colección',
+    sub: 'Solo las cartas que tienes.',
+    vacio: 'Todavía no has añadido ninguna carta. Búscala arriba y añádela.',
+  },
+  deseadas: {
+    titulo: 'Cartas deseadas',
+    sub: 'Lo que te falta y quieres conseguir.',
+    vacio: 'No tienes ninguna carta en la lista de deseadas.',
+  },
 };
 
 async function vistaColeccion(ruta, opciones = {}) {
   if (!sesion.filtros) sesion.filtros = await api('/filtros');
   const f = sesion.filtros;
-  Object.assign(estadoLista, { deseadas: !!opciones.deseadas, pagina: 1 });
+  const modo = MODOS[opciones.modo] ? opciones.modo : 'todas';
+  Object.assign(estadoLista, {
+    modo,
+    mias: modo === 'mias',
+    deseadas: modo === 'deseadas',
+    faltan: false, q: '', expansion: '', rareza: '', tipo: '', pagina: 1,
+  });
 
   const opts = (lista, valor, texto = (x) => x, val = (x) => x) =>
     lista.map((x) => `<option value="${esc(val(x))}"${val(x) === valor ? ' selected' : ''}>${esc(texto(x))}</option>`).join('');
@@ -207,14 +239,27 @@ async function vistaColeccion(ruta, opciones = {}) {
   vista.innerHTML = `
   <div class="wrap">
     <div class="head">
-      <h1 class="title">${opciones.deseadas ? 'Cartas deseadas' : 'Colección'}</h1>
+      <h1 class="title">${MODOS[modo].titulo}</h1>
+      <p class="subtitle">${MODOS[modo].sub}</p>
       <p class="subtitle" id="resumen">…</p>
     </div>
+
+    ${modo === 'todas' ? '' : `
+    <div class="panel panel-anadir">
+      <div class="fila">
+        <div class="crece">
+          <b>Añadir una carta</b>
+          <p class="carta-meta" style="margin:.1rem 0 0">
+            Busca entre todas las cartas del catálogo, no solo entre las tuyas.</p>
+        </div>
+        <button class="btn" id="anadir">+ Añadir carta</button>
+      </div>
+    </div>`}
 
     <div class="panel">
       <div class="fila">
         <div class="buscador">
-          <input id="q" type="search" placeholder="Buscar carta por nombre o número"
+          <input id="q" type="search" placeholder="${modo === 'mias' ? 'Filtrar entre mis cartas' : 'Buscar carta por nombre o número'}"
                  autocomplete="off" value="${esc(estadoLista.q)}">
           <div class="sugerencias" id="sug" hidden></div>
         </div>
@@ -242,8 +287,9 @@ async function vistaColeccion(ruta, opciones = {}) {
           <option value="asc">Ascendente</option>
           <option value="desc">Descendente</option>
         </select>
+        ${modo === 'todas' ? `
         <label class="chip"><input type="checkbox" id="mias" style="width:auto"> Solo las que tengo</label>
-        <label class="chip"><input type="checkbox" id="faltan" style="width:auto"> Solo las que me faltan</label>
+        <label class="chip"><input type="checkbox" id="faltan" style="width:auto"> Solo las que me faltan</label>` : ''}
         <span class="derecha chip" id="cuenta"></span>
       </div>
     </div>
@@ -261,8 +307,20 @@ async function vistaColeccion(ruta, opciones = {}) {
   $('#tipo').addEventListener('change', (e) => { estadoLista.tipo = e.target.value; recargar(); });
   $('#orden').addEventListener('change', (e) => { estadoLista.orden = e.target.value; recargar(); });
   $('#dir').addEventListener('change', (e) => { estadoLista.dir = e.target.value; recargar(); });
-  $('#mias').addEventListener('change', (e) => { estadoLista.mias = e.target.checked; recargar(); });
-  $('#faltan').addEventListener('change', (e) => { estadoLista.faltan = e.target.checked; recargar(); });
+  // Estas dos solo existen en la enciclopedia.
+  $('#mias')?.addEventListener('change', (e) => { estadoLista.mias = e.target.checked; recargar(); });
+  $('#faltan')?.addEventListener('change', (e) => { estadoLista.faltan = e.target.checked; recargar(); });
+
+  $('#anadir')?.addEventListener('click', () => abrirSelector({
+    titulo: modo === 'deseadas' ? 'Añadir a deseadas' : 'Añadir a mi colección',
+    accion: modo === 'deseadas' ? 'Quiero esta' : 'Añadir',
+    async alElegir(carta, cantidad) {
+      await api(`/cartas/${encodeURIComponent(carta.id)}/marcar`, { metodo: 'POST',
+        cuerpo: modo === 'deseadas' ? { deseada: true } : { cantidad } });
+      cargarResumen();
+      cargarLista();
+    },
+  }));
 
   montarBuscador();
   cargarResumen();
@@ -355,8 +413,8 @@ async function cargarLista() {
     if (cuenta) cuenta.textContent = `${r.total} carta${r.total === 1 ? '' : 's'}`;
 
     if (!r.cartas.length) {
-      caja.innerHTML = `<p class="vacio">No hay cartas que encajen.${
-        r.total === 0 && !estadoLista.q ? ' Puede que el catálogo aún se esté bajando.' : ''}</p>`;
+      caja.innerHTML = `<p class="vacio">${
+        estadoLista.q ? 'No hay cartas que encajen.' : MODOS[estadoLista.modo].vacio}</p>`;
       $('#paginacion').innerHTML = '';
       return;
     }
@@ -364,6 +422,24 @@ async function cargarLista() {
     caja.innerHTML = `<div class="rejilla">${r.cartas.map(tarjeta).join('')}</div>`;
     caja.querySelectorAll('.carta').forEach((c) => {
       c.addEventListener('click', () => abrirFicha(c.dataset.id));
+    });
+
+    // Los botones de cantidad van dentro de la tarjeta, que abre la ficha al
+    // pulsarla: sin parar la propagación, subir la cantidad abriría la ficha.
+    caja.querySelectorAll('.cantidad button').forEach((b) => {
+      b.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        const caja2 = b.closest('.cantidad');
+        const span = caja2.querySelector('span');
+        const nueva = Math.max(0, Number(span.textContent) + Number(b.dataset.mas));
+        const res = await api(`/cartas/${encodeURIComponent(caja2.dataset.id)}/marcar`,
+          { metodo: 'POST', cuerpo: { cantidad: nueva } });
+        span.textContent = res.cantidad;
+        cargarResumen();
+        // Al llegar a cero la carta deja de ser "mía" y desaparece de la
+        // lista; se recarga para que no quede una tarjeta fantasma.
+        if (res.cantidad === 0 && estadoLista.modo === 'mias') cargarLista();
+      });
     });
     pintarPaginacion(r);
   } catch (e) {
@@ -384,6 +460,12 @@ const tarjeta = (c) => `
     <p class="carta-nombre">${esc(c.nombre)}</p>
     <p class="carta-meta">${esc(c.numero || '')} · ${esc(c.expansion || '')}</p>
     <p class="carta-meta carta-precio">${c.precio_avg == null ? 'sin precio' : eur(c.precio_avg)}</p>
+    ${estadoLista.modo === 'mias' ? `
+    <div class="cantidad" data-id="${esc(c.id)}">
+      <button type="button" data-mas="-1" aria-label="Quitar una">−</button>
+      <span>${c.cantidad}</span>
+      <button type="button" data-mas="1" aria-label="Añadir una">+</button>
+    </div>` : ''}
   </div>
 </article>`;
 
@@ -480,6 +562,92 @@ async function abrirFicha(id) {
   }
 }
 
+// ── Selector de cartas ─────────────────────────────────────────────────────
+
+/*
+ * Buscador sobre TODO el catálogo, para añadir cartas desde la colección o
+ * desde el álbum. Va aparte del buscador de cada lista porque busca otra cosa:
+ * aquel filtra lo que ya se está viendo, este busca entre las decenas de miles
+ * que existen.
+ */
+function abrirSelector({ titulo, accion = 'Añadir', conCantidad = true, alElegir }) {
+  const velo = document.createElement('div');
+  velo.className = 'velo';
+  velo.innerHTML = `
+    <div class="selector">
+      <div class="fila">
+        <h2 style="margin:0;font-size:1.1rem" class="crece">${esc(titulo)}</h2>
+        <button class="link-btn" id="sel-cerrar">Cerrar</button>
+      </div>
+      <input id="sel-q" type="search" placeholder="Escribe el nombre de la carta…" autocomplete="off">
+      ${conCantidad ? `<div class="fila" style="margin-top:.5rem">
+        <label class="carta-meta" for="sel-cant">Cantidad</label>
+        <input id="sel-cant" type="number" min="1" max="999" value="1" style="width:5rem">
+      </div>` : ''}
+      <div id="sel-res" class="sel-res"><p class="vacio">Escribe al menos dos letras.</p></div>
+    </div>`;
+  document.body.appendChild(velo);
+
+  const cerrar = () => { velo.remove(); removeEventListener('keydown', porTecla); };
+  const porTecla = (ev) => { if (ev.key === 'Escape') cerrar(); };
+  addEventListener('keydown', porTecla);
+  velo.addEventListener('click', (ev) => { if (ev.target === velo) cerrar(); });
+  velo.querySelector('#sel-cerrar').addEventListener('click', cerrar);
+
+  const caja = velo.querySelector('#sel-q');
+  const res = velo.querySelector('#sel-res');
+  let temporizador = null;
+
+  const buscar = async () => {
+    const q = caja.value.trim();
+    if (q.length < 2) { res.innerHTML = '<p class="vacio">Escribe al menos dos letras.</p>'; return; }
+    res.innerHTML = '<div class="cargando"><div class="girando"></div></div>';
+    try {
+      // Sin filtro de "mías": aquí se busca en el catálogo entero, que es
+      // justo lo que pedía tener el buscador en las tres pantallas.
+      const r = await api('/cartas?limite=24&orden=nombre&q=' + encodeURIComponent(q));
+      if (!r.cartas.length) { res.innerHTML = '<p class="vacio">Ninguna carta se llama así.</p>'; return; }
+      res.innerHTML = `<p class="carta-meta">${r.total} resultado${r.total === 1 ? '' : 's'}${
+        r.total > 24 ? ', se enseñan los 24 primeros' : ''}</p>
+        <div class="rejilla">${r.cartas.map((c) => `
+        <article class="carta" data-id="${esc(c.id)}">
+          <img class="carta-img" loading="lazy" alt="${esc(c.nombre)}"
+               src="/api/imagen/${encodeURIComponent(c.id)}?size=low"
+               onerror="this.style.visibility='hidden'">
+          ${c.cantidad > 0 ? `<div class="marcas"><span class="marca marca-tengo">${c.cantidad}</span></div>` : ''}
+          <div class="carta-cuerpo">
+            <p class="carta-nombre">${esc(c.nombre)}</p>
+            <p class="carta-meta">${esc(c.numero || '')} · ${esc(c.expansion || '')}</p>
+            <button class="btn btn-pequeno" style="width:100%;margin-top:.35rem">${esc(accion)}</button>
+          </div>
+        </article>`).join('')}</div>`;
+
+      res.querySelectorAll('.carta').forEach((art) => {
+        art.addEventListener('click', async () => {
+          const carta = r.cartas.find((x) => x.id === art.dataset.id);
+          const cant = conCantidad ? Math.max(1, Number(velo.querySelector('#sel-cant').value) || 1) : 1;
+          const boton = art.querySelector('button');
+          boton.disabled = true;
+          boton.textContent = 'Añadiendo…';
+          try {
+            await alElegir(carta, cant);
+            boton.textContent = '✓ Añadida';
+          } catch (e) {
+            boton.disabled = false;
+            boton.textContent = 'Error';
+            alert(e.message);
+          }
+        });
+      });
+    } catch (e) {
+      res.innerHTML = `<p class="error">${esc(e.message)}</p>`;
+    }
+  };
+
+  caja.addEventListener('input', () => { clearTimeout(temporizador); temporizador = setTimeout(buscar, 280); });
+  caja.focus();
+}
+
 // ── Álbum ──────────────────────────────────────────────────────────────────
 
 const album = { id: null, pagina: 1, datos: null };
@@ -527,7 +695,10 @@ async function vistaAlbum() {
         <select id="cual" style="flex:0 1 16rem">
           ${binders.map((b) => `<option value="${b.id}"${b.id === album.id ? ' selected' : ''}>${esc(b.nombre)} · ${b.ocupados} cartas</option>`).join('')}
         </select>
-        <select id="rellenar-set" style="flex:1 1 14rem"><option value="">Rellenar con una expansión…</option></select>
+        <button class="btn" id="anadir-album">+ Añadir carta</button>
+      </div>
+      <div class="fila" style="margin-top:.6rem">
+        <select id="rellenar-set" style="flex:1 1 14rem"><option value="">…o rellenar con una expansión entera</option></select>
         <button class="btn btn-suave" id="rellenar">Rellenar</button>
       </div>
     </div>
@@ -551,6 +722,18 @@ async function vistaAlbum() {
     .map((e) => `<option value="${esc(e.set_code)}">${esc(e.nombre)} (${e.cartas})</option>`).join('');
 
   $('#cual').addEventListener('change', (e) => { album.id = Number(e.target.value); album.pagina = 1; cargarPagina(); });
+
+  $('#anadir-album').addEventListener('click', () => abrirSelector({
+    titulo: 'Añadir carta al álbum',
+    async alElegir(carta, cantidad) {
+      const r = await api(`/binder/${album.id}/anadir`, { metodo: 'POST',
+        cuerpo: { cartaId: carta.id, cantidad } });
+      // Saltar a la página donde ha caído: si no, uno añade una carta y no ve
+      // que haya pasado nada porque fue a parar a la página 7.
+      album.pagina = r.pagina;
+      cargarPagina();
+    },
+  }));
   $('#ant').addEventListener('click', () => pasar(-1));
   $('#sig').addEventListener('click', () => pasar(1));
   $('#rellenar').addEventListener('click', async () => {
@@ -683,10 +866,24 @@ function montarArrastre() {
     origen = null;
   });
 
-  // Con ratón, pulsar abre la ficha.
+  // Con ratón: sobre una carta se abre su ficha, sobre un hueco vacío se
+  // elige qué poner justo ahí.
   hoja.addEventListener('click', (ev) => {
-    const h = ev.target.closest('.hueco[data-carta]');
-    if (h) abrirFicha(h.dataset.carta);
+    const conCarta = ev.target.closest('.hueco[data-carta]');
+    if (conCarta) return abrirFicha(conCarta.dataset.carta);
+    const vacio = ev.target.closest('.hueco.vacio');
+    if (!vacio) return;
+    const hueco = Number(vacio.dataset.hueco);
+    abrirSelector({
+      titulo: `Poner una carta en el hueco ${hueco + 1}`,
+      async alElegir(carta, cantidad) {
+        await api(`/binder/${album.id}/pagina/${album.pagina}/hueco/${hueco}`,
+          { metodo: 'PUT', cuerpo: { cartaId: carta.id } });
+        await api(`/cartas/${encodeURIComponent(carta.id)}/marcar`,
+          { metodo: 'POST', cuerpo: { cantidad } });
+        cargarPagina();
+      },
+    });
   });
 }
 
