@@ -70,6 +70,13 @@ router.post('/precarga/coleccion', (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/* Todas las que falten. Es cosa de semanas por la cuota, así que se lanza y
+   se olvida uno; el panel enseña por dónde va. */
+router.post('/precarga/catalogo', (req, res, next) => {
+  try { res.json(img.precargarCatalogo((req.body || {}).tamano)); }
+  catch (e) { next(e); }
+});
+
 router.post('/precarga/parar', (req, res, next) => {
   try { res.json(img.pararPrecarga()); } catch (e) { next(e); }
 });
