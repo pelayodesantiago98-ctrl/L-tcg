@@ -59,6 +59,17 @@ router.post('/precarga/arrancar', (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/* Las imágenes de la colección de un usuario. Son pocas y son justo las que
+   va a abrir, así que es la precarga que más se nota. */
+router.post('/precarga/coleccion', (req, res, next) => {
+  try {
+    const { usuarioId, tamano } = req.body || {};
+    const id = parseInt(usuarioId, 10);
+    if (!id) return res.status(400).json({ error: 'Falta el usuario.' });
+    res.json(img.precargarColeccion(id, tamano));
+  } catch (e) { next(e); }
+});
+
 router.post('/precarga/parar', (req, res, next) => {
   try { res.json(img.pararPrecarga()); } catch (e) { next(e); }
 });
