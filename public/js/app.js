@@ -207,13 +207,13 @@ const estadoLista = {
 const MODOS = {
   todas: {
     titulo: 'Enciclopedia',
-    sub: 'Todas las cartas que existen. Desde aquí las añades a tu colección.',
+    sub: 'Todas las cartas que existen. Desde aquí las añades a tu colección y a tu álbum.',
     vacio: 'No hay cartas que encajen.',
   },
   mias: {
     titulo: 'Mi colección',
-    sub: 'Solo las cartas que tienes.',
-    vacio: 'Todavía no has añadido ninguna carta. Búscala arriba y añádela.',
+    sub: 'Solo las cartas que tienes. Para añadir más, ve a la enciclopedia.',
+    vacio: 'Todavía no tienes ninguna carta. Ve a la enciclopedia y añade la primera.',
   },
   deseadas: {
     titulo: 'Cartas deseadas',
@@ -244,7 +244,7 @@ async function vistaColeccion(ruta, opciones = {}) {
       <p class="subtitle" id="resumen">…</p>
     </div>
 
-    ${modo === 'todas' ? '' : `
+    ${modo !== 'deseadas' ? '' : `
     <div class="panel panel-anadir">
       <div class="fila">
         <div class="crece">
@@ -311,12 +311,14 @@ async function vistaColeccion(ruta, opciones = {}) {
   $('#mias')?.addEventListener('change', (e) => { estadoLista.mias = e.target.checked; recargar(); });
   $('#faltan')?.addEventListener('change', (e) => { estadoLista.faltan = e.target.checked; recargar(); });
 
+  // Solo queda en deseadas: en la colección se añade desde la enciclopedia.
   $('#anadir')?.addEventListener('click', () => abrirSelector({
-    titulo: modo === 'deseadas' ? 'Añadir a deseadas' : 'Añadir a mi colección',
-    accion: modo === 'deseadas' ? 'Quiero esta' : 'Añadir',
-    async alElegir(carta, cantidad) {
+    titulo: 'Añadir a deseadas',
+    accion: 'Quiero esta',
+    conCantidad: false,
+    async alElegir(carta) {
       await api(`/cartas/${encodeURIComponent(carta.id)}/marcar`, { metodo: 'POST',
-        cuerpo: modo === 'deseadas' ? { deseada: true } : { cantidad } });
+        cuerpo: { deseada: true } });
       cargarResumen();
       cargarLista();
     },
@@ -498,7 +500,13 @@ async function abrirFicha(id) {
   });
 
   try {
-    const c = await api('/cartas/' + encodeURIComponent(id));
+    // Los álbumes se piden a la vez que la carta: son dos consultas locales y
+    // esperar una detrás de otra se nota al abrir la ficha.
+    const [c, alb] = await Promise.all([
+      api('/cartas/' + encodeURIComponent(id)),
+      api('/binder').catch(() => ({ binders: [] })),
+    ]);
+    const binders = alb.binders || [];
     const p = (c.precios || []).filter((x) => x && x.avg != null);
     velo.querySelector('.ficha').innerHTML = `
       <div>
@@ -536,6 +544,15 @@ async function abrirFicha(id) {
           <button class="btn ${c.deseada ? '' : 'btn-suave'}" id="deseo">
             ${c.deseada ? '♥ En deseadas' : '♡ Quiero esta'}</button>
         </div>
+
+        <div class="fila" style="margin-top:.6rem">
+          ${binders.length > 1 ? `<select id="cual-album" style="flex:0 1 12rem">
+            ${binders.map((b) => `<option value="${b.id}">${esc(b.nombre)}</option>`).join('')}
+          </select>` : ''}
+          ${binders.length
+            ? '<button class="btn btn-suave" id="al-album">+ Poner en el álbum</button>'
+            : '<a class="link-btn" href="/album" data-ruta>Crea un álbum para poder colocarla</a>'}
+        </div>
         <p class="fila" style="margin-top:1rem">
           ${c.cm_url ? `<a class="link-btn" href="${esc(c.cm_url)}" target="_blank" rel="noopener">Ver en Cardmarket</a>` : ''}
           <button class="link-btn derecha" id="cerrar">Cerrar</button>
@@ -556,7 +573,40 @@ async function abrirFicha(id) {
     velo.querySelector('#mas').addEventListener('click', () => marcar({ cantidad: cantidad + 1 }));
     velo.querySelector('#menos').addEventListener('click', () => marcar({ cantidad: Math.max(0, cantidad - 1) }));
     velo.querySelector('#deseo').addEventListener('click', () => marcar({ deseada: !deseada }));
+
+    /* Va al primer hueco libre, y el servidor devuelve en qué página cayó: sin
+       decirlo, uno pulsa el botón y no ve que haya pasado nada. Poner una carta
+       en el álbum marca además que se tiene, si no había cantidad. */
+    velo.querySelector('#al-album')?.addEventListener('click', async (ev) => {
+      const boton = ev.currentTarget;
+      const cual = velo.querySelector('#cual-album');
+      const binderId = cual ? Number(cual.value) : binders[0].id;
+      boton.disabled = true;
+      boton.textContent = 'Colocando…';
+      try {
+        const r = await api(`/binder/${binderId}/anadir`, { metodo: 'POST',
+          cuerpo: { cartaId: c.id, cantidad: 1 } });
+        boton.textContent = `✓ En la página ${r.pagina}`;
+        if (!cantidad) {
+          cantidad = 1;
+          velo.querySelector('#cant').textContent = 'Tengo 1';
+        }
+        cargarResumen();
+        cargarLista();
+        // Si la ficha se abrió desde el propio álbum, la hoja de debajo acaba
+        // de cambiar. cargarPagina() se retira sola si no hay hoja delante.
+        cargarPagina();
+      } catch (e) {
+        boton.disabled = false;
+        boton.textContent = '+ Poner en el álbum';
+        alert(e.message);
+      }
+    });
+
     velo.querySelector('#cerrar').addEventListener('click', cerrar);
+    /* El enlace para crear un álbum navega por debajo del modal: sin esto la
+       ficha se queda flotando encima de la vista nueva. */
+    velo.querySelector('a[data-ruta]')?.addEventListener('click', cerrar);
   } catch (e) {
     velo.querySelector('.ficha').innerHTML = `<p class="error">${esc(e.message)}</p>`;
   }
@@ -695,7 +745,7 @@ async function vistaAlbum() {
         <select id="cual" style="flex:0 1 16rem">
           ${binders.map((b) => `<option value="${b.id}"${b.id === album.id ? ' selected' : ''}>${esc(b.nombre)} · ${b.ocupados} cartas</option>`).join('')}
         </select>
-        <button class="btn" id="anadir-album">+ Añadir carta</button>
+        <span class="carta-meta crece">Las cartas se añaden desde la enciclopedia o desde tu colección.</span>
       </div>
       <div class="fila" style="margin-top:.6rem">
         <select id="rellenar-set" style="flex:1 1 14rem"><option value="">…o rellenar con una expansión entera</option></select>
@@ -713,7 +763,8 @@ async function vistaAlbum() {
       </div>
     </div>
     <p class="subtitle" style="text-align:center;margin-top:.8rem">
-      Arrastra una carta a otro hueco para colocarla. Los huecos negros están vacíos.
+      Arrastra una carta a otro hueco para colocarla. Los huecos negros están vacíos:
+      las cartas se añaden desde la enciclopedia o desde tu colección.
     </p>
   </div>`;
 
@@ -723,17 +774,6 @@ async function vistaAlbum() {
 
   $('#cual').addEventListener('change', (e) => { album.id = Number(e.target.value); album.pagina = 1; cargarPagina(); });
 
-  $('#anadir-album').addEventListener('click', () => abrirSelector({
-    titulo: 'Añadir carta al álbum',
-    async alElegir(carta, cantidad) {
-      const r = await api(`/binder/${album.id}/anadir`, { metodo: 'POST',
-        cuerpo: { cartaId: carta.id, cantidad } });
-      // Saltar a la página donde ha caído: si no, uno añade una carta y no ve
-      // que haya pasado nada porque fue a parar a la página 7.
-      album.pagina = r.pagina;
-      cargarPagina();
-    },
-  }));
   $('#ant').addEventListener('click', () => pasar(-1));
   $('#sig').addEventListener('click', () => pasar(1));
   $('#rellenar').addEventListener('click', async () => {
@@ -866,24 +906,13 @@ function montarArrastre() {
     origen = null;
   });
 
-  // Con ratón: sobre una carta se abre su ficha, sobre un hueco vacío se
-  // elige qué poner justo ahí.
+  /* Sobre una carta se abre su ficha. El hueco vacío ya no abre el buscador
+     del catálogo: las cartas entran desde la enciclopedia o desde la colección
+     y caen en el primer hueco libre; para ponerlas en un sitio concreto se
+     arrastran, que es lo que ya se hacía para recolocarlas. */
   hoja.addEventListener('click', (ev) => {
     const conCarta = ev.target.closest('.hueco[data-carta]');
-    if (conCarta) return abrirFicha(conCarta.dataset.carta);
-    const vacio = ev.target.closest('.hueco.vacio');
-    if (!vacio) return;
-    const hueco = Number(vacio.dataset.hueco);
-    abrirSelector({
-      titulo: `Poner una carta en el hueco ${hueco + 1}`,
-      async alElegir(carta, cantidad) {
-        await api(`/binder/${album.id}/pagina/${album.pagina}/hueco/${hueco}`,
-          { metodo: 'PUT', cuerpo: { cartaId: carta.id } });
-        await api(`/cartas/${encodeURIComponent(carta.id)}/marcar`,
-          { metodo: 'POST', cuerpo: { cantidad } });
-        cargarPagina();
-      },
-    });
+    if (conCarta) abrirFicha(conCarta.dataset.carta);
   });
 }
 

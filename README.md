@@ -53,7 +53,10 @@ una petición y no vuelve a costar nada. La propia API lo bendice, responde con
 
 En la práctica: unas **100 cartas nuevas por hora** el primer día, y gratis
 después. El precargador (`/api/admin/precarga/arrancar`) deja el servidor
-bajando una expansión entera poco a poco, sin que nadie espere mirando.
+bajando una expansión entera poco a poco, sin que nadie espere mirando, y
+`/api/admin/precarga/coleccion` hace lo mismo con las cartas de un usuario
+—las que tiene o desea más las de sus álbumes—, que son las que de verdad va a
+abrir y son ciento y pico en vez de 22.000.
 
 No todas son JPEG: hay bastantes PNG. El formato se deduce de los bytes de
 cabecera y el fichero se guarda con la extensión que le toca; anunciar un PNG
@@ -77,7 +80,22 @@ Al principio la colección enseñaba el catálogo completo con una casilla de
 **El buscador de cada lista filtra lo que ya se está viendo.** Para añadir hay
 otro distinto, el selector (`abrirSelector`), que busca en el catálogo entero
 independientemente de la pantalla desde la que se abra. Son dos búsquedas con
-propósitos opuestos y por eso están separadas.
+propósitos opuestos y por eso están separadas. Hoy el selector solo lo usa
+«Deseadas»: ver abajo.
+
+### Dónde se añade cada cosa
+
+Lo que no tienes se busca donde está todo, que es la enciclopedia. La colección
+enseña lo tuyo y **no** deja añadir desde ahí: entrar en «mis cartas» y poder
+sacar cualquiera de las 22.000 del catálogo vuelve a mezclar las dos cosas que
+la tabla de arriba separa.
+
+Al álbum se manda desde la ficha de la carta, que se abre igual desde la
+enciclopedia que desde la colección, así que se puede colocar tanto una carta
+recién descubierta como una que ya se tenía. Cae en el primer hueco libre y la
+ficha dice en qué página, porque si no uno pulsa el botón y no ve que haya
+pasado nada. Para ponerla en un sitio concreto se arrastra, que es lo que ya
+se hacía para recolocar.
 
 En la colección cada tarjeta lleva sus botones de cantidad. Van dentro de la
 tarjeta, que abre la ficha al pulsarla, así que el manejador **para la
@@ -85,12 +103,10 @@ propagación**: sin eso, subir la cantidad abría también la ficha. Cuando la
 cantidad llega a cero la carta deja de ser «mía» y se recarga la lista para que
 no quede una tarjeta fantasma.
 
-En el álbum se puede añadir de dos formas: el botón busca en el catálogo y
-coloca la carta en el primer hueco libre —y salta a esa página, porque si no
-uno añade una carta y no ve que haya pasado nada al haber ido a parar a la
-página 7—, o se pulsa directamente un hueco negro para elegir qué poner ahí.
-Meter una carta en el álbum marca también que se tiene, salvo que ya hubiera
-una cantidad puesta.
+El álbum no tiene buscador propio: dentro solo se hojea, se arrastra y se
+rellena con una expansión entera, que es otra cosa —montar de golpe las páginas
+de un set— y por eso se queda. Meter una carta en el álbum marca también que se
+tiene, salvo que ya hubiera una cantidad puesta.
 
 ## Por qué SQLite y no MongoDB
 
