@@ -40,8 +40,10 @@ router.get('/estado', (req, res, next) => {
 
 router.post('/ingesta/arrancar', (req, res, next) => {
   try {
-    const { idiomas, desdeCero } = req.body || {};
-    res.json(ingesta.arrancar({ idiomas, desdeCero: !!desdeCero }));
+    // "faltantes" repasa solo las expansiones que no están enteras: es lo que
+    // se quiere después de una bajada que dejó huecos, sin repetir el catálogo.
+    const { idiomas, desdeCero, modo } = req.body || {};
+    res.json(ingesta.arrancar({ idiomas, desdeCero: !!desdeCero, modo }));
   } catch (e) { next(e); }
 });
 
