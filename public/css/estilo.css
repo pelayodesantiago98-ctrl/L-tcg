@@ -6,34 +6,32 @@
  * del navegador).
  */
 
+/*
+ * La paleta del portal: fondo oscuro con degradados, superficies de cristal y
+ * el azul de iOS como acento. Sin tema claro, igual que allí.
+ */
 :root {
-  --bg: #fbfbfa;
-  --fg: #1a1a18;
-  --muted: #6b6b66;
-  --card: #ffffff;
-  --border: #e4e4e0;
-  --accent: #2f6f4f;
-  --accent-fg: #ffffff;
-  --danger: #a4342a;
-  --oro: #b07c1e;
-  --hueco: #0e0e0d;
-  color-scheme: light dark;
-  accent-color: var(--accent);
-}
+  --bg: #0d0f1f;
+  --fg: #ffffff;
+  --muted: rgba(255, 255, 255, 0.72);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161614;
-    --fg: #ecece8;
-    --muted: #9a9a94;
-    --card: #1f1f1c;
-    --border: #33332e;
-    --accent: #5fae85;
-    --accent-fg: #10100f;
-    --danger: #e0857c;
-    --oro: #d8ae52;
-    --hueco: #000000;
-  }
+  --card: rgba(255, 255, 255, 0.08);
+  --card-solido: rgba(28, 30, 48, 0.92);   /* menús y capas sobre contenido */
+  --border: rgba(255, 255, 255, 0.16);
+
+  --accent: #0a84ff;
+  --accent-fg: #ffffff;
+  --danger: #ff6482;
+
+  /* Propios de este sitio: el oro de las raras y la ranura vacía del álbum. */
+  --oro: #d8ae52;
+  --hueco: rgba(255, 255, 255, 0.05);
+
+  --radio: 1rem;
+  --cristal: blur(22px) saturate(160%);
+
+  color-scheme: dark;
+  accent-color: var(--accent);
 }
 
 * { box-sizing: border-box; }
@@ -43,8 +41,14 @@ html, body { margin: 0; padding: 0; }
 
 body {
   min-height: 100dvh;
-  background: var(--bg);
   color: var(--fg);
+  /* El mismo cielo del portal, fijo al viewport. */
+  background:
+    radial-gradient(1200px 800px at 15% 0%, #3d3a8c 0%, transparent 60%),
+    radial-gradient(1000px 700px at 90% 15%, #1d5c8f 0%, transparent 55%),
+    radial-gradient(900px 900px at 50% 110%, #7b2f6b 0%, transparent 60%),
+    linear-gradient(170deg, #171a35 0%, #0d0f1f 100%);
+  background-attachment: fixed;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   line-height: 1.55;
@@ -64,7 +68,10 @@ body {
   align-items: center;
   gap: 0.75rem;
   padding: 0.7rem 1rem;
-  background: var(--card);
+  /* Cristal, como el dock del portal. */
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: var(--cristal);
+  -webkit-backdrop-filter: var(--cristal);
   border-bottom: 1px solid var(--border);
 }
 
@@ -107,9 +114,9 @@ body {
   place-items: center;
   width: 2.1rem;
   height: 2.1rem;
-  color: var(--accent-fg);
-  background: var(--accent);
-  border: 0;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 50%;
   font-weight: 800;
   font-size: 0.8rem;
@@ -122,10 +129,13 @@ body {
   right: 0.8rem;
   min-width: 12rem;
   padding: 0.35rem;
-  background: var(--card);
+  /* Casi opaco: se abre sobre las cartas y con cristal a secas no se leería. */
+  background: var(--card-solido);
+  backdrop-filter: var(--cristal);
+  -webkit-backdrop-filter: var(--cristal);
   border: 1px solid var(--border);
-  border-radius: 0.6rem;
-  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+  border-radius: 1rem;
+  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 0.45);
   z-index: 30;
 }
 .menu button, .menu a {
@@ -156,8 +166,10 @@ body {
   margin-bottom: 1.1rem;
   padding: 1rem 1.1rem;
   background: var(--card);
+  backdrop-filter: var(--cristal);
+  -webkit-backdrop-filter: var(--cristal);
   border: 1px solid var(--border);
-  border-radius: 0.8rem;
+  border-radius: var(--radio);
 }
 
 .fila { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
@@ -215,14 +227,17 @@ input:-webkit-autofill, input:-webkit-autofill:focus {
   color: var(--accent-fg);
   background: var(--accent);
   border: 1px solid transparent;
-  border-radius: 0.5rem;
+  border-radius: 0.8rem;
   font: inherit;
   font-size: 0.92rem;
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
+  /* Como el botón de entrar del portal. */
+  transition: filter 0.15s, transform 0.1s;
 }
-.btn:hover { filter: brightness(1.08); }
+.btn:hover { filter: brightness(1.1); }
+.btn:active { transform: scale(0.98); }
 .btn:disabled { opacity: 0.5; cursor: default; filter: none; }
 
 .btn-suave {
