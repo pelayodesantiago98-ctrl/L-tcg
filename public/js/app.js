@@ -927,6 +927,22 @@ function vistaPerfil() {
       <p class="subtitle">${esc(u.rol === 'admin' ? 'Administrador' : 'Usuario')}</p></div>
 
     <div class="panel">
+      <h2 style="margin-top:0;font-size:1.05rem">Foto de perfil</h2>
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+        <span id="perfil-avatar" style="position:relative;overflow:hidden;display:grid;
+              place-items:center;width:72px;height:72px;border-radius:50%;
+              background:var(--bg3,#2a2f3a);font-weight:700;font-size:1.5rem">
+          ${esc(iniciales(u))}
+        </span>
+        <div>
+          <a class="btn" href="https://lepayimio.es/">Cambiar en lepayimio.es</a>
+          <p class="campo-nota" style="opacity:.6;font-size:.82rem;margin:.5rem 0 0">
+            Tu foto es la misma en todos los servicios: se gestiona en el portal.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
       <h2 style="margin-top:0;font-size:1.05rem">Datos</h2>
       <div id="m1"></div>
       <div class="campo"><label for="n">Nombre y apellidos</label>
@@ -948,6 +964,18 @@ function vistaPerfil() {
       <button class="btn" id="cambiar">Cambiar contraseña</button>
     </div>
   </div>`;
+
+  // Misma foto que en el resto de servicios, con las iniciales de respaldo.
+  const avPerfil = $('#perfil-avatar');
+  if (avPerfil) {
+    const img = document.createElement('img');
+    img.alt = '';
+    img.decoding = 'async';
+    img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+    img.addEventListener('error', () => img.remove());
+    img.src = 'https://lepayimio.es/perfil/foto';
+    avPerfil.appendChild(img);
+  }
 
   $('#guardar').addEventListener('click', async () => {
     try {
