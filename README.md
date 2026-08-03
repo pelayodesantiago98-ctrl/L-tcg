@@ -264,3 +264,27 @@ Cloudflare, y el modo SSL de la zona tiene que seguir en **Full**, no en
 `better-sqlite3` está fijado a la serie 11: la última exige Node ≥ 22 y su
 binario precompilado **revienta con un segfault** en el Node 20 del servidor,
 que es el que usan también l-games y el portal.
+
+## Licencia
+
+Este proyecto se distribuye bajo la **GNU General Public License v3.0**. El texto
+completo está en [LICENSE](LICENSE).
+
+    L-tcg — colección de cartas Pokémon con álbum visual y precios
+    Copyright (C) 2026 Lepayo (@pelayodesantiago98-ctrl)
+
+    Este programa es software libre: puedes redistribuirlo y/o modificarlo
+    bajo los términos de la GNU General Public License, en su versión 3,
+    tal y como la publica la Free Software Foundation.
+
+    Se distribuye con la esperanza de que resulte útil, pero SIN NINGUNA
+    GARANTÍA; ni siquiera la garantía implícita de COMERCIABILIDAD o
+    IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Consulta la GNU General Public
+    License para más detalles.
+
+    Deberías haber recibido una copia de la GNU General Public License junto
+    a este programa. Si no es así, mírala en <https://www.gnu.org/licenses/>.
+
+Qué significa en la práctica: puedes usarlo, estudiarlo, modificarlo y
+redistribuirlo; si distribuyes una versión modificada, tienes que publicar su
+código con esta misma licencia.
