@@ -93,6 +93,7 @@ const iniciales = (u) => (u.nombre || u.usuario || '?').trim().split(/\s+/)
 function cabecera() {
   if (!sesion.usuario) return;
   $('#avatar').textContent = iniciales(sesion.usuario);
+  ponerFotoDelPortal();
   const admin = sesion.usuario.rol === 'admin';
   $('#nav-admin').hidden = !admin;
   $('#menu-admin').hidden = !admin;
@@ -1095,3 +1096,20 @@ function vistaNoEncontrada() {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 })();
+
+/*
+ * La foto de perfil vive en el portal y la comparten todos los servicios. Se
+ * pide a lepayimio.es, que reconoce la sesión por la cookie del dominio padre.
+ * Si no hay foto, la imagen falla, se retira y se quedan las iniciales.
+ */
+function ponerFotoDelPortal() {
+  const av = document.querySelector('#avatar');
+  if (!av || av.querySelector('.avatar-portal')) return;
+  const img = document.createElement('img');
+  img.className = 'avatar-portal';
+  img.alt = '';
+  img.decoding = 'async';
+  img.addEventListener('error', () => img.remove());
+  img.src = 'https://lepayimio.es/perfil/foto';
+  av.appendChild(img);
+}
