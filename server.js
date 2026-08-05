@@ -104,6 +104,25 @@ function indexHtml() {
 // un 404 y la PWA se rompe al abrirse desde el icono.
 app.get(/^(?!\/api\/).*/, (req, res, next) => {
   if (req.method !== 'GET') return next();
+
+  /*
+   * Lo que pide un fichero no es una ruta de la aplicacion.
+   *
+   * Antes esto devolvia el index con un 200 a cualquier cosa: /.env,
+   * /package.json, /.git/config. No se filtraba nada -- lo que sale es el
+   * index de siempre, esos ficheros ni se leen -- pero un escaneo automatico
+   * lee "200" y da por hecho que estan ahi, y una auditoria pierde el tiempo
+   * detras de una fuga que no existe. Pasa: en la revision del 5 de agosto
+   * salieron los ocho como EXPUESTO hasta mirar el cuerpo de la respuesta.
+   *
+   * Los estaticos de verdad (css, js, iconos) los ha servido express.static
+   * mas arriba, asi que si una peticion con pinta de fichero llega hasta aqui
+   * es que no existe, y lo honrado es decirlo: cae en el 404 de abajo.
+   */
+  if (/^\/\./.test(req.path) ||
+      /\.(env|json|js|mjs|md|ya?ml|lock|sh|bak|sql|db|sqlite3?|conf|ini|log|pem|key)$/i.test(req.path)) {
+    return next();
+  }
   // El index nunca se cachea: es quien lleva las versiones de lo demás.
   res.set('Cache-Control', 'no-cache');
   res.type('html').send(indexHtml());
