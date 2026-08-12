@@ -1065,6 +1065,9 @@ function pintarAdmin(d) {
         : `<button class="btn" id="seguir">${i.indiceSet ? 'Reanudar' : 'Bajar catálogo'}</button>
            <button class="btn btn-suave" id="precios">Actualizar solo precios</button>
            <button class="btn btn-suave" id="cero">Empezar de cero</button>`}
+      <button class="btn btn-suave" id="imagenes-todas"${p.activo ? ' disabled' : ''}>${p.activo
+        ? 'Bajando imágenes…'
+        : 'Bajar imágenes que faltan (' + (c.sinImagen || 0).toLocaleString('es-ES') + ')'}</button>
       <select id="idiomas" style="flex:0 1 12rem" ${i.activo ? 'disabled' : ''}>
         <option value="eng">Solo inglés (34.014)</option>
         <option value="eng,jap">Inglés y japonés (61.525)</option>
@@ -1091,6 +1094,9 @@ function pintarAdmin(d) {
     await api('/admin/ingesta/arrancar', { metodo: 'POST', cuerpo: { idiomas: idi(), desdeCero: true } });
   });
   bind('#parar', async () => { await api('/admin/ingesta/parar', { metodo: 'POST' }); });
+  // Las imágenes van por su cuenta y son semanas de cuota, pero el botón
+  // vive aquí, al lado de Reanudar, que es donde se va a buscar.
+  bind('#imagenes-todas', async () => { await api('/admin/precarga/catalogo', { metodo: 'POST' }); });
   bind('#parar-img', async () => { await api('/admin/precarga/parar', { metodo: 'POST' }); });
   bind('#precargar', async () => {
     const s = $('#set-precarga').value;

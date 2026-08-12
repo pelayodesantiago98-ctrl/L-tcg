@@ -26,7 +26,8 @@ router.get('/estado', (req, res, next) => {
       ingesta: e,
       precarga: img.estado(),
       cuota,
-      catalogo: { expansiones: exps, cartas, imagenes: img.cuantasEnDisco() },
+      catalogo: { expansiones: exps, cartas, imagenes: img.cuantasEnDisco(),
+                  sinImagen: db.prepare('SELECT COUNT(*) c FROM cartas WHERE imagen_local = 0').get().c },
       // Con 200 cartas por petición y el techo por hora, esto es lo que
       // realmente se tarda; conviene que el administrador lo vea antes de
       // darle al botón y no lo descubra a las cuatro horas.
