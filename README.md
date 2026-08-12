@@ -3,8 +3,24 @@
 Colección de cartas Pokémon con álbum visual, en
 [l-tcg.lepayimio.es](https://l-tcg.lepayimio.es).
 
-Node + Express, SQLite y JWT. Los datos vienen de la API de
+Node + Express y SQLite, con la sesión delegada en el portal de lepayimio. Los datos vienen de la API de
 [PokeWallet](https://api.pokewallet.io/).
+
+
+## Capturas
+
+<p align="center">
+  <img src="assets/screenshots/album.png" width="800"
+       alt="Una página del álbum, con los huecos vacíos en negro">
+</p>
+<p align="center"><sub>El álbum, nueve cartas por página. Las que faltan salen en gris y el hueco vacío en negro.</sub></p>
+
+| Mi colección | Enciclopedia | En el móvil |
+|---|---|---|
+| ![](assets/screenshots/coleccion.png) | ![](assets/screenshots/enciclopedia.png) | ![](assets/screenshots/movil.png) |
+
+<sub>Capturas hechas con <code>herramientas/demo.sh</code>, que levanta una copia
+aparte con una colección de ejemplo y la borra al terminar.</sub>
 
 ## Lo que hay que saber antes de tocar nada
 
