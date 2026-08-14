@@ -95,7 +95,10 @@ function cabecera() {
   $('#avatar').textContent = iniciales(sesion.usuario);
   ponerFotoDelPortal();
   const admin = sesion.usuario.rol === 'admin';
-  $('#nav-admin').hidden = !admin;
+  /* Ya no esta en la barra —las secciones se fueron al menu— pero se
+     comprueba en vez de darlo por hecho: asi no revienta si vuelve. */
+  const enBarra = $('#nav-admin');
+  if (enBarra) enBarra.hidden = !admin;
   $('#menu-admin').hidden = !admin;
 }
 

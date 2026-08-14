@@ -907,3 +907,15 @@ input[type="radio"], input[type="file"], select { cursor: pointer; }
 
 /* Al tocar en el movil, sin el destello gris de Android. */
 html { -webkit-tap-highlight-color: transparent; }
+
+/* El icono junto al nombre, en la esquina. */
+.brand { display: inline-flex; align-items: center; gap: .5rem; }
+.marca-icono {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex: none;
+}
+
+/* Con las secciones en el menú, la barra solo lleva la marca y el avatar. */
+.nav { margin-left: auto; }
