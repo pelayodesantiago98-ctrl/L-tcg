@@ -919,3 +919,131 @@ html { -webkit-tap-highlight-color: transparent; }
 
 /* Con las secciones en el menú, la barra solo lleva la marca y el avatar. */
 .nav { margin-left: auto; }
+
+/* ── El álbum, abierto como un libro ─────────────────────────────────────
+   Una hoja sola se centra —la portada, y la última si el total es par— y dos
+   se reparten con el lomo en medio. El lomo es una sombra y no una línea: en
+   una carpeta de verdad lo que se ve entre las dos caras es el pliegue, no un
+   borde. */
+
+.hojas { display: flex; justify-content: center; gap: 0; }
+
+.hojas.abierto {
+  gap: 0;
+  align-items: flex-start;
+}
+
+.hojas.abierto .hoja:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: inset -14px 0 22px -18px rgba(0, 0, 0, .85);
+}
+.hojas.abierto .hoja:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  box-shadow: inset 14px 0 22px -18px rgba(0, 0, 0, .85);
+}
+
+/* El pliegue: una línea fina de sombra donde se juntan. */
+.hojas.abierto .hoja:first-child { border-right: 1px solid rgba(0, 0, 0, .35); }
+
+/* En un móvil no caben dos caras a lo ancho, así que se ponen una debajo de
+   otra: mejor eso que dos hojas ilegibles. */
+@media (max-width: 46rem) {
+  .hojas.abierto { flex-direction: column; align-items: center; }
+  .hojas.abierto .hoja { border-radius: inherit; border-right: 0; box-shadow: none; }
+}
+
+/* ── El tamaño de la hoja ────────────────────────────────────────────────
+   Una hoja mide lo mismo esté sola o acompañada. Antes no tenían ancho propio
+   y se repartían el del contenedor, así que al pasar de la portada a la
+   primera pareja las cartas encogían de golpe. Ahora cada una pide lo suyo y
+   el contenedor solo las centra. */
+
+.hojas .hoja {
+  flex: 0 0 auto;
+  width: min(100%, 27rem);
+}
+
+/* Con las dos abiertas hacen falta 54rem; si no caben, la fila se ajusta sin
+   encoger las hojas —para eso está el salto a vertical de más abajo. */
+.hojas { max-width: 100%; }
+
+/* Los huecos, con la proporción de una carta. Sin esto el alto lo decidía la
+   imagen que hubiera dentro, y un hueco vacío quedaba de otra altura que uno
+   lleno: de ahí que no se viera encuadrado. */
+.hoja .hueco {
+  aspect-ratio: 63 / 88;
+  min-height: 0;
+}
+.hoja .hueco img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── La carpeta, a la medida de lo que tiene dentro ──────────────────────
+   Con las dos hojas abiertas pide el doble de ancho; con el de una, las hojas
+   se salían de su propia carpeta. */
+.album {
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+/* El canal del centro: en una carpeta de verdad las cartas de una cara no
+   tocan las de la otra, están separadas por las anillas. */
+.hojas.abierto { gap: 1.6rem; }
+
+/* Y el pliegue se dibuja a los dos lados del canal, no como un borde entre
+   hojas pegadas. */
+.hojas.abierto .hoja:first-child { border-right: 0; }
+.hojas.abierto {
+  background:
+    linear-gradient(to right, transparent calc(50% - .8rem),
+                    rgba(0, 0, 0, .28) calc(50% - .8rem),
+                    rgba(0, 0, 0, .28) calc(50% + .8rem),
+                    transparent calc(50% + .8rem));
+}
+
+@media (max-width: 46rem) {
+  .hojas.abierto { gap: 1rem; background: none; }
+}
+
+/* ── Las anillas, al pliegue ─────────────────────────────────────────────
+   Con una sola cara van al borde izquierdo, como en una carpeta cerrada. Con
+   las dos abiertas el pliegue queda en medio: se llevan las anillas al pliegue
+   y se quita el degradado del canal, que hacía el mismo papel. */
+.album.abierto::before {
+  left: 50%;
+  transform: translateX(-50%);
+  display: block;
+}
+
+.album.abierto .hojas.abierto { background: none; }
+
+/* Apiladas no hay pliegue que valga. */
+@media (max-width: 46rem) {
+  .album.abierto::before { display: none; }
+}
+
+/* ── Sitio para las dos hojas ────────────────────────────────────────────
+   `fit-content` no bastaba: las hojas piden `min(100%, 27rem)` y ese 100% se
+   mide contra la propia carpeta, asi que cada una esperaba a la otra. Con la
+   carpeta abierta se le da la medida de lo que lleva: dos hojas de 27rem, el
+   canal de 1.6 y el relleno de 1.1 por lado. */
+.album.abierto {
+  width: 100%;
+  max-width: 58rem;
+}
+
+/* Cerrada sigue como estaba: una hoja y su margen. */
+.album:not(.abierto) {
+  width: 100%;
+  max-width: 30rem;
+}
+
+@media (max-width: 46rem) {
+  .album.abierto, .album:not(.abierto) { max-width: 34rem; }
+}

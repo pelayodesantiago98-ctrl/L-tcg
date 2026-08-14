@@ -750,6 +750,10 @@ async function vistaAlbum() {
           ${binders.map((b) => `<option value="${b.id}"${b.id === album.id ? ' selected' : ''}>${esc(b.nombre)} · ${b.ocupados} cartas</option>`).join('')}
         </select>
         <span class="carta-meta crece">Las cartas se añaden desde la enciclopedia o desde tu colección.</span>
+        <label class="carta-meta">Páginas
+          <input id="paginas" type="number" min="1" max="500" style="width:5rem;margin-left:.4rem">
+        </label>
+        <button class="btn btn-suave btn-pequeno" id="guardar-paginas">Guardar</button>
       </div>
       <div class="fila" style="margin-top:.6rem">
         <select id="rellenar-set" style="flex:1 1 14rem"><option value="">…o rellenar con una expansión entera</option></select>
@@ -758,7 +762,10 @@ async function vistaAlbum() {
     </div>
 
     <div class="album" id="carpeta">
-      <div class="hojas"><div class="hoja" id="hoja"></div></div>
+      <div class="hojas" id="hojas">
+        <div class="hoja" id="hoja"></div>
+        <div class="hoja" id="hoja-der" hidden></div>
+      </div>
       <div class="barra"><div id="barra" style="width:0%"></div></div>
       <div class="album-pie">
         <button class="btn btn-suave btn-pequeno" id="ant">‹ Anterior</button>
@@ -778,6 +785,19 @@ async function vistaAlbum() {
 
   $('#cual').addEventListener('change', (e) => { album.id = Number(e.target.value); album.pagina = 1; cargarPagina(); });
 
+  $('#guardar-paginas').addEventListener('click', async () => {
+    const n = Number($('#paginas').value);
+    try {
+      await api(`/binder/${album.id}`, { metodo: 'PATCH', cuerpo: { paginas: n } });
+      /* Si estabas mirando una hoja que ya no existe, atras hasta la ultima. */
+      if (album.pagina > n) album.pagina = n;
+      await cargarPagina();
+    } catch (e) {
+      alert(e.message);
+      $('#paginas').value = album.datos.binder.paginas;
+    }
+  });
+
   $('#ant').addEventListener('click', () => pasar(-1));
   $('#sig').addEventListener('click', () => pasar(1));
   $('#rellenar').addEventListener('click', async () => {
@@ -795,21 +815,73 @@ async function vistaAlbum() {
   cargarPagina();
 }
 
+/*
+ * Que paginas se ven a la vez.
+ *
+ * La primera va sola: una carpeta abierta por el principio enseña una sola
+ * cara, y ademas hace de portada. A partir de ahi, de dos en dos y siempre con
+ * la par a la izquierda, que es como cae en un libro de verdad. Si el total es
+ * par, la ultima tambien queda sola.
+ */
+function hojasDe(pagina, total) {
+  if (pagina <= 1) return [1];
+  const izq = pagina % 2 === 0 ? pagina : pagina - 1;
+  return izq + 1 <= total ? [izq, izq + 1] : [izq];
+}
+
 async function cargarPagina() {
   const hoja = $('#hoja');
   if (!hoja) return;
-  const d = await api(`/binder/${album.id}/pagina/${album.pagina}`);
+
+  const total = (album.datos && album.datos.binder.paginas) || album.paginas || 1;
+  const cuales = hojasDe(album.pagina, total);
+
+  /* Las dos a la vez: pedirlas una detras de otra enseñaria media carpeta
+     mientras llega la segunda. */
+  const paginas = await Promise.all(
+    cuales.map((n) => api(`/binder/${album.id}/pagina/${n}`)));
+
+  const d = paginas[0];
   album.datos = d;
+  album.paginas = d.binder.paginas;
 
   $('#carpeta').style.setProperty('--slots-x', d.binder.distribucion[0]);
   hoja.innerHTML = d.huecos.map((h) => casilla(h, d.binder)).join('');
+  hoja.dataset.pagina = String(cuales[0]);
+
+  const der = $('#hoja-der');
+  if (paginas[1]) {
+    der.innerHTML = paginas[1].huecos.map((h) => casilla(h, paginas[1].binder)).join('');
+    der.dataset.pagina = String(cuales[1]);
+    der.hidden = false;
+  } else {
+    der.innerHTML = '';
+    der.hidden = true;
+  }
+  /* Una sola hoja se centra; dos se reparten con el lomo en medio. */
+  const abierto = !!paginas[1];
+  $('#hojas').classList.toggle('abierto', abierto);
+  /* La carpeta tambien: sus anillas se pintan en un ::before y con las dos
+     caras abiertas tienen que ir al centro, no al borde. */
+  $('#carpeta').classList.toggle('abierto', abierto);
+
+  const tenidas = paginas.reduce((s, p) => s + p.progreso.tenidas, 0);
+  const llenos = paginas.reduce(
+    (s, p) => s + (p.progreso.llenos || p.binder.slots_por_pagina), 0);
+
   $('#barra').style.width = d.progreso.porcentaje + '%';
-  $('#pie').textContent = `Página ${d.pagina} de ${d.binder.paginas} · ` +
-    `${d.progreso.tenidas} de ${d.progreso.llenos || d.binder.slots_por_pagina} conseguidas` +
-    (d.progreso.faltan.length ? ` · faltan ${d.progreso.faltan.length}` : '');
-  $('#album-sub').textContent = `${d.binder.nombre} · ${d.binder.slots_por_pagina} huecos por página`;
-  $('#ant').disabled = d.pagina <= 1;
-  $('#sig').disabled = d.pagina >= d.binder.paginas;
+  $('#pie').textContent = (cuales.length > 1
+    ? `Páginas ${cuales[0]}-${cuales[1]} de ${d.binder.paginas}`
+    : `Página ${cuales[0]} de ${d.binder.paginas}`) +
+    ` · ${tenidas} de ${llenos} conseguidas`;
+  $('#album-sub').textContent =
+    `${d.binder.nombre} · ${d.binder.slots_por_pagina} huecos por página`;
+
+  const campo = $('#paginas');
+  if (campo && document.activeElement !== campo) campo.value = d.binder.paginas;
+
+  $('#ant').disabled = album.pagina <= 1;
+  $('#sig').disabled = cuales[cuales.length - 1] >= d.binder.paginas;
 
   montarArrastre();
 }
@@ -830,8 +902,16 @@ const casilla = (h, binder) => {
    siguiente, para que el giro no se corte a la mitad esperando a la red. */
 async function pasar(sentido) {
   const d = album.datos;
-  const destino = album.pagina + sentido;
-  if (!d || destino < 1 || destino > d.binder.paginas) return;
+  if (!d) return;
+  const total = d.binder.paginas;
+
+  /* De la portada se salta a la primera pareja, y de ahi de dos en dos: es lo
+     que pasa al girar UNA hoja de una carpeta. */
+  let destino;
+  if (sentido > 0) destino = album.pagina <= 1 ? 2 : album.pagina + 2;
+  else destino = album.pagina <= 2 ? 1 : album.pagina - 2;
+  if (destino < 1 || destino > total) return;
+
   const hoja = $('#hoja');
   hoja.classList.add(sentido > 0 ? 'pasa-adelante' : 'pasa-atras');
   album.pagina = destino;
@@ -846,7 +926,12 @@ async function pasar(sentido) {
 /* Arrastrar y soltar. Con ratón va el arrastre nativo; en táctil no existe,
    así que se sigue el dedo a mano y se mira qué hueco hay debajo al soltar. */
 function montarArrastre() {
-  const hoja = $('#hoja');
+  /* Las dos hojas abiertas, no solo la izquierda: mover una carta de una a
+     otra es lo primero que se intenta con el album abierto. */
+  [$('#hoja'), $('#hoja-der')].filter((h) => h && !h.hidden).forEach(montarEnHoja);
+}
+
+function montarEnHoja(hoja) {
   let origen = null;
 
   const soltarEn = async (destino) => {

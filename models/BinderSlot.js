@@ -36,10 +36,28 @@ const borrar = (id, usuarioId) =>
 function renombrar(id, usuarioId, nombre, paginas) {
   const b = porId(id, usuarioId);
   if (!b) return null;
+
+  let cuantas = b.paginas;
+  if (paginas != null) {
+    cuantas = Math.min(Math.max(parseInt(paginas, 10) || 1, 1), 500);
+
+    /* Reducir por debajo de donde hay cartas las dejaria fuera del album, y
+       aqui no hay deshacer. Se dice cual es el minimo y no se toca nada:
+       borrarlas o apiñarlas hacia delante perderia trabajo sin avisar. */
+    const ultima = db.prepare(
+      'SELECT MAX(pagina) AS p FROM binder_slots ' +
+      'WHERE binder_id = ? AND carta_id IS NOT NULL').get(id);
+    const minimo = (ultima && ultima.p) || 1;   // la ultima pagina con algo
+    if (cuantas < minimo) {
+      const e = new Error('Tienes cartas hasta la pagina ' + minimo +
+        '. Quitalas antes de bajar de ahi.');
+      e.status = 409;
+      throw e;
+    }
+  }
+
   db.prepare('UPDATE binders SET nombre = ?, paginas = ? WHERE id = ?').run(
-    String(nombre || b.nombre).trim().slice(0, 80) || b.nombre,
-    paginas == null ? b.paginas : Math.min(Math.max(parseInt(paginas, 10) || 1, 1), 500),
-    id);
+    String(nombre || b.nombre).trim().slice(0, 80) || b.nombre, cuantas, id);
   return porId(id, usuarioId);
 }
 
