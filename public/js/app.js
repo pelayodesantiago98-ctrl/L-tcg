@@ -1147,3 +1147,102 @@ function ponerFotoDelPortal() {
   img.src = 'https://lepayimio.es/perfil/foto';
   av.appendChild(img);
 }
+
+
+/* ── Tema ────────────────────────────────────────────────────────────────────
+ *
+ * La elección se guarda en el servidor, por usuario, así que sigue al usuario
+ * de un dispositivo a otro.
+ *
+ * Aquí no se aplica al cargar: ya viene marcado en el <html> desde el servidor.
+ * Hacerlo desde el cliente obligaría a pintar el tema por defecto y corregirlo
+ * después, y ese parpadeo se ve en cada carga.
+ */
+const TEMAS_TCG = ['oscuro', 'crystal', 'dark-crystal'];
+const ICONOS_TEMA = {
+  'oscuro': '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>',
+  'crystal': '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zm0 12.2l7.1-3.95L21 12l-9 5-9-5 1.9-1.05L12 15.2z"/></svg>',
+  'dark-crystal': '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zm0 12.2l7.1-3.95L21 12l-9 5-9-5 1.9-1.05L12 15.2z"/></svg>',
+};
+const NOMBRE_TEMA = { oscuro: 'Oscuro', crystal: 'Crystal', 'dark-crystal': 'Dark Crystal' };
+
+const temaActual = () => document.documentElement.dataset.tema || 'oscuro';
+
+function marcarTema(tema) {
+  document.querySelectorAll('.menu-tema[data-tema]').forEach((b) => {
+    const suyo = b.dataset.tema === tema;
+    b.classList.toggle('activa', suyo);
+    b.setAttribute('aria-checked', suyo ? 'true' : 'false');
+  });
+  const puesto = document.getElementById('tema-actual');
+  /* El icono del tema puesto. El nombre sigue haciendo falta, pero
+     para el lector de pantalla: un icono solo no dice nada. */
+  if (puesto) {
+    puesto.className = 'tema-muestra tema-mini ' + tema;
+    puesto.innerHTML = ICONOS_TEMA[tema] || '';
+  }
+  if (abrirTemas) abrirTemas.setAttribute('aria-label', 'Tema: ' + (NOMBRE_TEMA[tema] || tema));
+}
+
+async function ponerTema(tema) {
+  if (!TEMAS_TCG.includes(tema)) return;
+  const antes = temaActual();
+
+  /* Se aplica primero y se guarda después: cambiar de tema tiene que sentirse
+     instantáneo, y esperar a la red para pintar lo haría parecer lento. */
+  if (tema === 'oscuro') delete document.documentElement.dataset.tema;
+  else document.documentElement.dataset.tema = tema;
+  marcarTema(tema);
+
+  try {
+    const r = await fetch('/api/tema', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tema }),
+    });
+    if (!r.ok) throw new Error('no guardado');
+  } catch {
+    /* Si no se pudo guardar se deshace: dejar la pantalla diciendo una cosa y
+       el servidor recordando otra haría que al recargar pareciera que el botón
+       no funciona. */
+    if (antes === 'oscuro') delete document.documentElement.dataset.tema;
+    else document.documentElement.dataset.tema = antes;
+    marcarTema(antes);
+  }
+}
+
+document.querySelectorAll('.menu-tema[data-tema]').forEach((b) => {
+  b.addEventListener('click', () => ponerTema(b.dataset.tema));
+});
+
+const abrirTemas = document.getElementById('abrir-temas');
+const submenuTemas = document.getElementById('submenu-temas');
+if (abrirTemas && submenuTemas) {
+  abrirTemas.addEventListener('click', (ev) => {
+    /* Sin esto el clic burbujea hasta el cierre global del menú, que cerraría
+       la ventana en el mismo gesto que la abre. */
+    ev.stopPropagation();
+    verVentanaTema(true);
+  });
+}
+
+function verVentanaTema(v) {
+  const velo = document.getElementById('tema-velo');
+  if (!velo) return;
+  velo.hidden = !v;
+  /* Se cierra el menú al abrirla: los dos a la vez tapan media pantalla. */
+  if (v) cerrarMenu();
+  if (abrirTemas) abrirTemas.setAttribute('aria-expanded', v ? 'true' : 'false');
+}
+
+const veloTema = document.getElementById('tema-velo');
+if (veloTema) {
+  veloTema.addEventListener('click', (e) => {
+    if (e.target === veloTema || e.target.closest('[data-cierra-tema]')) verVentanaTema(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !veloTema.hidden) verVentanaTema(false);
+  });
+}
+
+marcarTema(temaActual());

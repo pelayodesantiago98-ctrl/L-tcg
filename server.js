@@ -21,6 +21,8 @@ for (const linea of (fs.existsSync(path.join(__dirname, '.env'))
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const { conSesion } = require('./lib/auth');
+const sso = require('/usr/local/lib/lepayimio/sso');
+const temas = require('/usr/local/lib/lepayimio/tema');
 const ingesta = require('./lib/ingesta');
 const imagenes = require('./lib/imagenes');
 
@@ -34,6 +36,23 @@ const VERSION = (() => {
 
 app.use(cookieParser());
 app.use(conSesion);
+
+/* El tema elegido, por usuario y en el servidor. Se indexa por el ID del SSO
+   y no por el de la tabla de aquí: ese es el que no cambia nunca. */
+const tema = temas.crear(
+  path.join(__dirname, 'data', 'temas.json'),
+  ['oscuro', 'crystal', 'dark-crystal'],
+  'oscuro');
+
+const quienTema = (req) => {
+  const s = sso.sesion(req);
+  return s ? s.id : '';
+};
+
+/* El cuerpo JSON se monta solo para esta ruta: aqui no hay express.json()
+   global, cada router monta el suyo con el limite que le hace falta. */
+app.use('/api/tema', express.json({ limit: '1kb' }));
+tema.rutas(app, quienTema);
 
 app.get('/api/version', (req, res) => res.json({ version: VERSION }));
 
@@ -125,7 +144,10 @@ app.get(/^(?!\/api\/).*/, (req, res, next) => {
   }
   // El index nunca se cachea: es quien lleva las versiones de lo demás.
   res.set('Cache-Control', 'no-cache');
-  res.type('html').send(indexHtml());
+  /* El tema se marca AQUÍ y no dentro de indexHtml(): esa función cachea su
+     resultado, y meterlo dentro serviría a todo el mundo el tema del último
+     que hubiera pasado por ahí. */
+  res.type('html').send(tema.inyectar(indexHtml(), tema.de(quienTema(req))));
 });
 
 app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada.' }));
@@ -143,4 +165,5 @@ app.listen(PUERTO, '127.0.0.1', () => {
   // por donde iba en vez de quedarse callado.
   ingesta.reanudarSiHacia();
   imagenes.reanudarPrecarga();
+  imagenes.vigilar();
 });
