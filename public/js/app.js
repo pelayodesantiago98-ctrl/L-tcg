@@ -40,6 +40,10 @@ const sesion = { usuario: null, filtros: null };
 
 // ── Enrutado ───────────────────────────────────────────────────────────────
 
+/* Donde se aterriza: la raiz y el salto de despues de entrar. Aqui y no
+   repartido, que antes eran dos literales que habia que cambiar a la vez. */
+const INICIO = '/enciclopedia';
+
 const RUTAS = {
   '/entrar': vistaEntrada,
   '/registro': vistaRegistro,
@@ -57,12 +61,12 @@ function ir(ruta, reemplazar = false) {
 }
 
 async function pintar() {
-  const ruta = location.pathname === '/' ? (sesion.usuario ? '/coleccion' : '/entrar') : location.pathname;
+  const ruta = location.pathname === '/' ? (sesion.usuario ? INICIO : '/entrar') : location.pathname;
   const base = '/' + ruta.split('/')[1];
   const publica = base === '/entrar' || base === '/registro';
 
   if (!sesion.usuario && !publica) return ir('/entrar', true);
-  if (sesion.usuario && publica) return ir('/coleccion', true);
+  if (sesion.usuario && publica) return ir(INICIO, true);
 
   $('#topbar').hidden = !sesion.usuario;
   document.querySelectorAll('.nav a[data-ruta]').forEach((a) => {
@@ -100,6 +104,7 @@ function cabecera() {
   const enBarra = $('#nav-admin');
   if (enBarra) enBarra.hidden = !admin;
   $('#menu-admin').hidden = !admin;
+  medirBarra();
 }
 
 const cerrarMenu = () => { $('#menu').hidden = true; $('#avatar').setAttribute('aria-expanded', 'false'); };
@@ -146,7 +151,7 @@ function vistaEntrada() {
         usuario: $('#u').value, clave: $('#p').value } });
       sesion.usuario = r.usuario;
       cabecera();
-      ir('/coleccion');
+      ir(INICIO);
     } catch (e) {
       $('#msg').innerHTML = `<p class="error">${esc(e.message)}</p>`;
       boton.disabled = false;
@@ -186,7 +191,7 @@ function vistaRegistro() {
         clave2: $('#p2').value, claveRegistro: $('#a').value } });
       sesion.usuario = r.usuario;
       cabecera();
-      ir('/coleccion');
+      ir(INICIO);
     } catch (e) {
       $('#msg').innerHTML = `<p class="error">${esc(e.message)}</p>`;
       boton.disabled = false;
@@ -895,6 +900,8 @@ const casilla = (h, binder) => {
             <img loading="lazy" alt="${esc(c.nombre)}"
                  src="/api/imagen/${encodeURIComponent(c.carta_id)}?size=low"
                  onerror="this.style.display='none'">
+            <button type="button" class="quitar-carta" title="Quitar del álbum"
+                    aria-label="Quitar ${esc(c.nombre)} del álbum">&times;</button>
           </div>`;
 };
 
@@ -912,15 +919,24 @@ async function pasar(sentido) {
   else destino = album.pagina <= 2 ? 1 : album.pagina - 2;
   if (destino < 1 || destino > total) return;
 
-  const hoja = $('#hoja');
-  hoja.classList.add(sentido > 0 ? 'pasa-adelante' : 'pasa-atras');
+  /* La que de verdad se levanta: hacia adelante, la cara derecha cae hacia la
+     izquierda; hacia atras, al reves. Con una sola hoja, la que haya. */
+  const der = $('#hoja-der');
+  const abierto = der && !der.hidden;
+  const gira = (sentido > 0 && abierto) ? der : $('#hoja');
+
+  gira.classList.add(sentido > 0 ? 'pasa-adelante' : 'pasa-atras');
   album.pagina = destino;
   await new Promise((r) => setTimeout(r, 220));
   await cargarPagina();
-  const nueva = $('#hoja');
-  nueva.classList.remove('pasa-adelante', 'pasa-atras');
-  nueva.classList.add(sentido > 0 ? 'pasa-atras' : 'pasa-adelante');
-  setTimeout(() => nueva.classList.remove('pasa-adelante', 'pasa-atras'), 430);
+
+  /* Y la que entra hace el gesto contrario, para que parezca la misma hoja
+     terminando su recorrido. */
+  const derN = $('#hoja-der');
+  const entra = (sentido > 0 && derN && !derN.hidden) ? $('#hoja') : (derN && !derN.hidden ? derN : $('#hoja'));
+  entra.classList.remove('pasa-adelante', 'pasa-atras');
+  entra.classList.add(sentido > 0 ? 'pasa-atras' : 'pasa-adelante');
+  setTimeout(() => entra.classList.remove('pasa-adelante', 'pasa-atras'), 430);
 }
 
 /* Arrastrar y soltar. Con ratón va el arrastre nativo; en táctil no existe,
@@ -933,6 +949,25 @@ function montarArrastre() {
 
 function montarEnHoja(hoja) {
   let origen = null;
+
+  /* Quitar una carta. La pagina se lee de la hoja: con las dos caras abiertas,
+     la de la derecha no es album.pagina. */
+  hoja.querySelectorAll('.quitar-carta').forEach((b) => {
+    b.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      const hueco = ev.target.closest('.hueco');
+      const pagina = Number(hoja.dataset.pagina) || album.pagina;
+      b.disabled = true;
+      try {
+        await api(`/binder/${album.id}/pagina/${pagina}/hueco/${hueco.dataset.hueco}`,
+                  { metodo: 'PUT', cuerpo: { cartaId: null } });
+        await cargarPagina();
+      } catch (e) {
+        b.disabled = false;
+        alert(e.message);
+      }
+    });
+  });
 
   const soltarEn = async (destino) => {
     hoja.querySelectorAll('.destino').forEach((x) => x.classList.remove('destino'));
@@ -1200,7 +1235,7 @@ function pintarAdmin(d) {
 function vistaNoEncontrada() {
   vista.innerHTML = `<div class="wrap"><div class="head">
     <h1 class="title">404</h1><p class="subtitle">Esa página no existe.</p></div>
-    <a class="btn" href="/coleccion" data-ruta>Volver</a></div>`;
+    <a class="btn" href="/enciclopedia" data-ruta>Volver</a></div>`;
 }
 
 // ── Arranque ───────────────────────────────────────────────────────────────
@@ -1334,3 +1369,14 @@ if (veloTema) {
 }
 
 marcarTema(temaActual());
+
+
+/* El hueco que deja la barra fija, medido de ella misma. Se recalcula al
+   cambiar el tamaño porque en estrecho la barra crece de alto. */
+function medirBarra() {
+  const b = document.querySelector('.topbar');
+  const alto = b && !b.hidden ? b.getBoundingClientRect().height : 0;
+  document.documentElement.style.setProperty('--alto-barra', alto + 'px');
+}
+addEventListener('resize', medirBarra);
+addEventListener('load', medirBarra);

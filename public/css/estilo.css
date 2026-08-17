@@ -1047,3 +1047,131 @@ html { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 46rem) {
   .album.abierto, .album:not(.abierto) { max-width: 34rem; }
 }
+
+/* Los iconos del menú. Dibujados y no emojis: un emoji lo pinta cada sistema a
+   su manera y en color, así que en el mismo menú convivirían varios estilos.
+   Un SVG hereda el color del texto. */
+.menu a, .menu > button, .menu form button {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.menu-icono {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: currentColor;
+  opacity: .75;
+}
+.menu a:hover .menu-icono, .menu button:hover .menu-icono { opacity: 1; }
+
+/* La etiqueta del tema sigue empujando su muestra a la derecha. */
+.menu .menu-desplegar .menu-etiqueta { flex: 1 1 auto; }
+
+/* Una anilla menos por abajo. El patrón se repite cada 2.2rem hasta donde
+   llegue la barra, así que la última quedaba pegada al borde. Se recorta justo
+   un paso del patrón: desaparece entera en vez de quedarse a medias. */
+.album::before { bottom: calc(8% + 2.2rem); }
+
+/* Cada hoja gira sobre el lomo, no sobre su borde exterior: la derecha por su
+   canto izquierdo y la izquierda por el derecho. Es lo que hace que parezca
+   una hoja levantandose y no un panel deslizandose. */
+.hojas.abierto .hoja:first-child { transform-origin: right center; }
+.hojas.abierto .hoja:last-child { transform-origin: left center; }
+
+/* ── Lo que flota por encima, opaco ──────────────────────────────────────
+   `--card` es un 8% de blanco: bien para un panel apoyado sobre el fondo, mal
+   para una ventana que se abre ENCIMA del contenido, porque deja leer lo de
+   detrás y no se distingue de la página. Se les da fondo propio sin tocar
+   `--card`, que los paneles apoyados siguen necesitando. */
+
+.ficha {
+  background: #1b2030;
+  color: var(--fg);
+  border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* El velo, más cerrado: con la ventana opaca detrás, un velo flojo dejaba la
+   pantalla a medio camino entre las dos cosas. */
+.velo { background: rgb(0 0 0 / 0.72); }
+
+/* La barra de arriba acompaña al bajar —ya era sticky— pero al ser de cristal
+   el contenido se transparentaba por detrás y parecía que no estuviera. */
+.topbar {
+  background: #161a26;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+
+/* En los temas claros, lo mismo pero al revés. */
+:root[data-tema="crystal"] .ficha { background: #eef4fc; }
+:root[data-tema="crystal"] .topbar { background: #e6eef8; }
+
+/* ── La barra, fija de verdad ────────────────────────────────────────────
+   `sticky` depende del contexto de scroll y de que ningún antepasado tenga
+   overflow; `fixed` no depende de nada. El hueco de abajo lo compensa, y su
+   medida la pone el guion leyendo la propia barra: escribirla a mano cuadraría
+   hoy y se descuadraría al cambiarle el alto. */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+}
+
+body { padding-top: var(--alto-barra, 3.6rem); }
+
+/* Sin sesión la barra no se pinta, así que el hueco tampoco. */
+body:has(.topbar[hidden]) { padding-top: 0; }
+
+/* ── El buscador ─────────────────────────────────────────────────────────
+   Las sugerencias, opacas: se despliegan encima del contenido y con el 8% de
+   blanco de `--card` se leia lo de detras a traves de ellas. */
+.sugerencias {
+  background: #1b2030;
+  border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, .45);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+:root[data-tema="crystal"] .sugerencias {
+  background: #eef4fc;
+  border-color: rgba(51, 70, 94, .16);
+  box-shadow: 0 14px 32px rgba(17, 36, 60, .22);
+}
+
+/* Quitar una carta del álbum. Aparece al pasar por encima en ratón; en táctil
+   no hay «pasar por encima», así que ahí se ve siempre. */
+.hueco { position: relative; }
+.quitar-carta {
+  position: absolute;
+  top: .2rem;
+  right: .2rem;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(12, 14, 22, .82);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+.hueco:hover .quitar-carta,
+.quitar-carta:focus-visible { opacity: 1; }
+.quitar-carta:hover { background: #c8102e; }
+.quitar-carta[disabled] { opacity: .5; cursor: default; }
+
+@media (hover: none) {
+  .quitar-carta { opacity: .85; }
+}
