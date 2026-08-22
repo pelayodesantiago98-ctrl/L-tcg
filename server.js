@@ -125,21 +125,30 @@ app.get(/^(?!\/api\/).*/, (req, res, next) => {
   if (req.method !== 'GET') return next();
 
   /*
-   * Lo que pide un fichero no es una ruta de la aplicacion.
+   * Solo las rutas que la aplicacion tiene de verdad.
    *
-   * Antes esto devolvia el index con un 200 a cualquier cosa: /.env,
-   * /package.json, /.git/config. No se filtraba nada -- lo que sale es el
-   * index de siempre, esos ficheros ni se leen -- pero un escaneo automatico
-   * lee "200" y da por hecho que estan ahi, y una auditoria pierde el tiempo
-   * detras de una fuga que no existe. Pasa: en la revision del 5 de agosto
-   * salieron los ocho como EXPUESTO hasta mirar el cuerpo de la respuesta.
+   * Estas ocho son las claves de RUTAS en public/js/app.js. El cliente resuelve
+   * la vista por el PRIMER segmento -- `const base = '/' + ruta.split('/')[1]`
+   * -- asi que aqui se compara igual, y /album/loquesea sigue llegando a su
+   * vista.
    *
-   * Los estaticos de verdad (css, js, iconos) los ha servido express.static
-   * mas arriba, asi que si una peticion con pinta de fichero llega hasta aqui
-   * es que no existe, y lo honrado es decirlo: cae en el 404 de abajo.
+   * Antes esto era un filtro al reves: pasaba todo menos lo que tuviera pinta
+   * de fichero (/.env, /package.json, /.git/config). Eso tapaba el caso feo
+   * -- un escaneo automatico que lee "200" y da por hecho que el fichero esta
+   * ahi; paso de verdad, en la revision del 5 de agosto salieron ocho como
+   * EXPUESTO hasta mirar el cuerpo -- pero dejaba fuera el caso normal:
+   * /pepito respondia 200 con la pagina entera.
+   *
+   * En positivo cubre los dos, y ademas deja que nginx ponga ahi la pagina 404
+   * del dominio, que no puede hacer nada si nunca ve un 404.
+   *
+   * Si se anade una vista, va aqui tambien. Son dos sitios y no uno, si: la
+   * alternativa es que el servidor importe el enrutador del navegador, y eso
+   * es mucho peor negocio que estas ocho palabras.
    */
-  if (/^\/\./.test(req.path) ||
-      /\.(env|json|js|mjs|md|ya?ml|lock|sh|bak|sql|db|sqlite3?|conf|ini|log|pem|key)$/i.test(req.path)) {
+  const VISTAS = new Set(['entrar', 'registro', 'coleccion', 'enciclopedia',
+                          'deseadas', 'album', 'perfil', 'admin']);
+  if (req.path !== '/' && !VISTAS.has(req.path.split('/')[1])) {
     return next();
   }
   // El index nunca se cachea: es quien lleva las versiones de lo demás.
