@@ -603,7 +603,10 @@ input:-webkit-autofill, input:-webkit-autofill:focus {
 
 /* Pasar página: la hoja gira sobre su lomo. Dos nombres porque el sentido
    importa, ir hacia delante no se ve igual que volver atrás. */
-.hoja.pasa-adelante { animation: pasaAdelante 0.42s ease-in; }
+/* ease-out y no ease-in: una hoja que pasa está SALIENDO, y lo que sale
+   tiene que arrancar rápido. Con ease-in el primer tercio del giro casi no se
+   mueve, que es justo el momento en el que estás mirando. */
+.hoja.pasa-adelante { animation: pasaAdelante 0.42s cubic-bezier(0.23, 1, 0.32, 1); }
 .hoja.pasa-atras    { animation: pasaAtras 0.42s ease-out; }
 
 @keyframes pasaAdelante {

@@ -7,7 +7,10 @@
 <meta name="description" content="Colección de cartas Pokémon con álbum visual">
 <meta name="theme-color" content="#161614" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
-<link rel="stylesheet" href="/css/estilo.css">
+<link rel="stylesheet" href="/css/estilo.css?v=1787399313">
+<!-- La capa de acabado: va DESPUES de la hoja de la casa, que es lo que le
+     permite anadir sin redefinir. -->
+<link rel="stylesheet" href="/css/mejoras.css?v=1787399313">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/img/icono-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="/img/icono-180.png">
@@ -28,24 +31,24 @@
 <div class="menu" id="menu" hidden role="menu">
   <!-- Enlace externo a propósito: el guion solo intercepta los del propio
        sitio, así que este navega de verdad al portal. -->
-  <a href="https://lepayimio.es/" role="menuitem"><svg class="menu-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>Inicio de lepayimio</a>
+  <a href="https://lepayimio.es/" role="menuitem"><svg class="menu-icono ico ico-inicio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-tejado" d="M5 12l-2 0l9 -9l9 9l-2 0"/><path class="ico-casa" d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path class="ico-puerta" d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/></svg>Inicio de lepayimio</a>
   <hr>
-  <a href="/perfil" data-ruta role="menuitem"><svg class="menu-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.6a4.3 4.3 0 110-8.6 4.3 4.3 0 010 8.6zm0 1.9c4 0 7.3 2.1 7.3 4.6v1.4H4.7v-1.4c0-2.5 3.3-4.6 7.3-4.6z"/></svg>Editar perfil</a>
-      <a href="/coleccion" data-ruta role="menuitem"><svg class="menu-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a2 2 0 012 2v9a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2zm-2.5 3.5v9A2.5 2.5 0 007 19h9v1.5H7a4 4 0 01-4-4v-9h1.5z"/></svg>Colección</a>
-      <a href="/album" data-ruta role="menuitem"><svg class="menu-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a1 1 0 011 1v16a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1zm2 3v4h4V6H7zm6 0v4h4V6h-4zM7 12v4h4v-4H7zm6 0v4h4v-4h-4z"/></svg>Álbum</a>
-  <a href="/enciclopedia" data-ruta role="menuitem"><svg class="menu-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 016.5 2H19v18H6.5A2.5 2.5 0 004 22V4.5zm2.5-.5a.5.5 0 00-.5.5v13.6c.2-.06.4-.1.5-.1H17V4H6.5z"/></svg>Enciclopedia</a>
-  <a href="/deseadas" data-ruta role="menuitem"><svg class="menu-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6.1L12 16.8 6.7 19.7l1.1-6.1L3.4 9.4l6-.8L12 3z"/></svg>Cartas deseadas</a>
-  <a href="/admin" data-ruta role="menuitem" id="menu-admin" hidden><svg class="menu-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm8.4 4a8.4 8.4 0 01-.1 1.2l2 1.6-1.9 3.4-2.4-1a8.4 8.4 0 01-2 1.2l-.4 2.6h-3.9l-.4-2.6a8.4 8.4 0 01-2-1.2l-2.4 1L3 14.8l2-1.6A8.4 8.4 0 015 12c0-.4 0-.8.1-1.2l-2-1.6 1.9-3.4 2.4 1a8.4 8.4 0 012-1.2l.4-2.6h3.9l.4 2.6a8.4 8.4 0 012 1.2l2.4-1 1.9 3.4-2 1.6c.06.4.1.8.1 1.2z"/></svg>Gestión</a>
+  <a href="/perfil" data-ruta role="menuitem"><svg class="menu-icono ico ico-perfil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="ico-figura"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></g></svg>Editar perfil</a>
+      <a href="/coleccion" data-ruta role="menuitem"><svg class="menu-icono ico ico-libro" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-lomo" d="M24 40.5V41L24 10V10.5"/><path class="ico-tapa" d="M24 41C31.0005 36.9995 37.9995 36.9995 45 41V10.0003C37.9995 5.99989 31.0005 5.99989 24 10.0003C16.9995 5.99989 10.0005 5.99989 3 10.0003V41C10.0005 36.9995 16.9995 36.9995 24 41Z"/><path class="ico-renglon ico-renglon-1" d="M30 16.5C32.8362 15.1345 36.5662 15.06 39.5 16.2763"/><path class="ico-renglon ico-renglon-2" d="M30 23.5832C32.8362 22.2178 36.5662 22.1432 39.5 23.3596"/><path class="ico-renglon ico-renglon-3" d="M30 30.6665C32.8362 29.301 36.5662 29.2265 39.5 30.4428"/></svg>Colección</a>
+      <a href="/album" data-ruta role="menuitem"><svg class="menu-icono ico ico-album" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect class="ico-hueco-1" width="7" height="9" x="3" y="3" rx="1"/><rect class="ico-hueco-2" width="7" height="5" x="14" y="3" rx="1"/><rect class="ico-hueco-3" width="7" height="9" x="14" y="12" rx="1"/><rect class="ico-hueco-4" width="7" height="5" x="3" y="16" rx="1"/></svg>Álbum</a>
+  <a href="/enciclopedia" data-ruta role="menuitem"><svg class="menu-icono ico ico-estante" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-tomo-1" d="m16 6 4 14"/><path class="ico-tomo-2" d="M12 6v14"/><path class="ico-tomo-3" d="M8 8v12"/><path class="ico-tomo-4" d="M4 4v16"/></svg>Enciclopedia</a>
+  <a href="/deseadas" data-ruta role="menuitem"><svg class="menu-icono ico ico-estrella" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-relleno" d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z"/><path class="ico-borde" d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z"/></svg>Cartas deseadas</a>
+  <a href="/admin" data-ruta role="menuitem" id="menu-admin" hidden><svg class="menu-icono ico ico-engranaje" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="ico-gira"><circle class="ico-eje" cx="16" cy="16" r="5"/><path class="ico-corona" d="m30,17.5v-3l-3.388-1.355c-.25-.933-.617-1.815-1.089-2.633l1.436-3.351-2.121-2.121-3.351,1.436c-.817-.472-1.7-.838-2.633-1.089l-1.355-3.388h-3l-1.355,3.388c-.933.25-1.815.617-2.633,1.089l-3.351-1.436-2.121,2.121 1.436,3.351c-.472.817-.838,1.7-1.089,2.633l-3.388,1.355v3l3.388,1.355c.25.933.617,1.815,1.089,2.633l-1.436,3.351 2.121,2.121 3.351-1.436c.817.472 1.7.838 2.633,1.089l1.355,3.388h3l1.355-3.388c.933-.25 1.815-.617 2.633-1.089l3.351,1.436 2.121-2.121-1.436-3.351c.472-.817.838-1.7 1.089-2.633l3.388-1.355Z"/></g></svg>Gestión</a>
   <hr>
   <!-- El tema, plegado: suelto se comería tres de las entradas del menú. -->
   <button type="button" class="menu-desplegar" id="abrir-temas"
           aria-expanded="false" aria-controls="submenu-temas">
     <span class="menu-etiqueta">Tema</span>
-    <span class="tema-muestra tema-mini oscuro" id="tema-actual" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg></span>
-    <svg class="menu-flecha" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 5.6 15 12l-6.4 6.4-1.4-1.4L12.2 12 7.2 7z"/></svg>
+    <span class="tema-muestra tema-mini oscuro" id="tema-actual" aria-hidden="true"><svg class="ico ico-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/></svg></span>
+    <svg class="menu-flecha ico ico-flecha-der" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg>
   </button>
   <hr>
-  <button type="button" id="salir" role="menuitem"><svg class="menu-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3.5v2H6.2v13h4.3v2H4.2v-17h6.3zm4.6 3.1l5.4 5.4-5.4 5.4-1.4-1.4 3-3H8.6v-2h8.1l-3-3 1.4-1.4z"/></svg>Desconectarse</button>
+  <button type="button" id="salir" role="menuitem"><svg class="menu-icono ico ico-salir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-puerta" d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path class="ico-flecha" d="M9 12h12"/><path class="ico-flecha" d="M18 15l3 -3l-3 -3"/></svg>Desconectarse</button>
 </div>
 
 <main id="vista"><div class="cargando"><div class="girando"></div></div></main>
@@ -63,29 +66,30 @@
         <div class="submenu" id="submenu-temas" role="group" aria-label="Tema">
     <button type="button" class="menu-tema" role="menuitemradio" data-tema="oscuro">
       <span class="tema-muestra oscuro">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
+        <svg class="ico ico-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/></svg>
       </span>
       <span class="tema-nombre">Oscuro</span>
-      <span class="tema-tic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+      <span class="tema-tic"><svg class="ico ico-tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-marca" d="M5 12l5 5l10 -10"/></svg></span>
     </button>
     <button type="button" class="menu-tema" role="menuitemradio" data-tema="crystal">
       <span class="tema-muestra crystal">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zm0 12.2l7.1-3.95L21 12l-9 5-9-5 1.9-1.05L12 15.2z"/></svg>
+        <svg class="ico ico-capas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-capa-alta" d="M12 6l-8 4l8 4l8 -4l-8 -4"/><path class="ico-capa-baja" d="M4 14l8 4l8 -4"/></svg>
       </span>
       <span class="tema-nombre">Crystal</span>
-      <span class="tema-tic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+      <span class="tema-tic"><svg class="ico ico-tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-marca" d="M5 12l5 5l10 -10"/></svg></span>
     </button>
     <button type="button" class="menu-tema" role="menuitemradio" data-tema="dark-crystal">
       <span class="tema-muestra dark-crystal">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zm0 12.2l7.1-3.95L21 12l-9 5-9-5 1.9-1.05L12 15.2z"/></svg>
+        <svg class="ico ico-capas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-capa-alta" d="M12 6l-8 4l8 4l8 -4l-8 -4"/><path class="ico-capa-baja" d="M4 14l8 4l8 -4"/></svg>
       </span>
       <span class="tema-nombre">Dark Crystal</span>
-      <span class="tema-tic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+      <span class="tema-tic"><svg class="ico ico-tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-marca" d="M5 12l5 5l10 -10"/></svg></span>
     </button>
   </div>
   </div>
 </div>
 
 <script src="/js/app.js" type="module"></script>
+<script src="/js/mejoras.js" defer></script>
 </body>
 </html>

@@ -15,11 +15,11 @@
  * Las respuestas de /api que no son imágenes no se cachean nunca: son datos
  * del usuario y verlos viejos confunde más que ayuda.
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const ARMAZON = `ltcg-armazon-${VERSION}`;
 const IMAGENES = 'ltcg-imagenes';
 
-const BASICOS = ['/', '/css/estilo.css', '/js/app.js', '/manifest.webmanifest'];
+const BASICOS = ['/', '/css/estilo.css', '/css/mejoras.css', '/js/app.js', '/js/mejoras.js', '/manifest.webmanifest'];
 
 self.addEventListener('install', (ev) => {
   ev.waitUntil(caches.open(ARMAZON).then((c) => c.addAll(BASICOS)).then(() => self.skipWaiting()));
