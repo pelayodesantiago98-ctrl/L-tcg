@@ -89,6 +89,144 @@
 }
 .carta.marcada { animation: m-tcg-marca 520ms var(--m-curva); }
 
+/*
+ * El panel «Personalizar»: el cristal del desplegable y sus botones. Los
+ * COLORES de cada gama (las 12 de holonook.es, más "personalizado") no
+ * viven aquí: son las variables --cover-a/b/c, --page-a/b, --slot-a/b e
+ * --ink que pone aplicarAcabado() en app.js sobre #carpeta, y binder.css
+ * las consume con la misma fórmula que el origen. Aquí solo va el cristal
+ * del propio desplegable, que es UI de la casa y no parte de lo copiado.
+ */
+.acabado-envoltura { position: relative; }
+.acabados {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + .5rem);
+  left: 0;
+  width: min(20rem, 84vw);
+  padding: .8rem;
+  background: var(--m-panel-solido);
+  border: 1px solid var(--m-linea);
+  border-radius: .7rem;
+  box-shadow: var(--m-sombra-alta);
+}
+.acabados-rejilla {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .4rem;
+}
+.acabado-chip {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .35rem .5rem;
+  background: transparent;
+  border: 1px solid var(--m-linea);
+  border-radius: .5rem;
+  color: var(--m-tinta);
+  font: inherit;
+  font-size: .78rem;
+  cursor: pointer;
+  transition: border-color var(--m-corto) var(--m-curva), background var(--m-corto) var(--m-curva), transform var(--m-corto) var(--m-curva);
+}
+.acabado-chip:hover { border-color: var(--m-acento); transform: translateY(-1px); }
+/* El acabado puesto ahora mismo, marcado igual que en la referencia: no solo
+   se lee en el texto "ACABADO · …" de arriba, también se ve de un vistazo
+   en la rejilla. JS decide cuál lo es; aquí solo se pinta. */
+.acabado-chip.activo {
+  border-color: var(--m-acento);
+  background: color-mix(in srgb, var(--m-acento) 14%, transparent);
+}
+.acabado-chip.ptodo { grid-column: 1 / -1; }
+.acabado-muestra {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--muestra, linear-gradient(160deg, #3a2c22, #1a1310));
+  border: 1px solid rgb(255 255 255 / .25);
+  flex: none;
+}
+.acabado-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .7rem;
+  margin-top: .6rem;
+  padding-top: .6rem;
+  border-top: 1px solid var(--m-linea);
+  color: var(--m-tinta);
+  font-size: .8rem;
+}
+.acabado-custom label { display: flex; align-items: center; gap: .4rem; }
+.acabado-custom select { font: inherit; padding: .25rem .4rem; border-radius: .4rem; border: 1px solid var(--m-linea); background: var(--m-panel-solido); color: var(--m-tinta); }
+.acabado-custom input[type="color"] {
+  width: 2.2rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid var(--m-linea);
+  border-radius: .3rem;
+  background: none;
+}
+
+/*
+ * «Ver solo las que me faltan»: las que ya tienes se sumergen en vez de
+ * desaparecer. El hueco sigue ahí para no perder la cuenta de la página —una
+ * carta que falta se reconoce por su sitio, no solo por su marca—, igual que
+ * ya hacía el filtro homónimo de las listas.
+ */
+.album.solo-faltan .hueco:not(.falta):not(.vacio) { opacity: .1; filter: grayscale(1); }
+.album.solo-faltan .hueco:not(.falta):not(.vacio):hover { opacity: .35; }
+
+/*
+ * Selección múltiple del álbum. Ctrl/Cmd+clic o Mayús+clic la activan, y a
+ * partir de ahí CUALQUIER clic sobre una carta selecciona en vez de abrir su
+ * ficha —si no, no habría forma de marcar la segunda sin volver a tocar el
+ * modificador—. app.js las marca con .seleccionada y apaga el arrastre
+ * nativo mientras tanto: mover una carta y pintar una selección arrastrando
+ * usan el mismo mousedown, y no caben los dos gestos a la vez.
+ */
+.hueco.seleccionada { outline: 3px solid var(--m-acento); outline-offset: -3px; }
+.hueco.seleccionada::before {
+  content: '';
+  position: absolute;
+  top: .3rem;
+  left: .3rem;
+  z-index: 3;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--m-acento);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--m-acento) 35%, transparent);
+}
+/* Quitar del álbum es un gesto distinto del de seleccionar, y los dos botones
+   viven en la misma esquina de un hueco pequeño: fuera mientras se
+   selecciona, que es cuando de verdad estorbaría un clic fallido. */
+.album.seleccion-activa .hueco .quitar-carta { display: none; }
+
+.barra-seleccion {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  z-index: 30;
+  transform: translateX(-50%);
+  width: min(42rem, 92vw);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: .9rem 1rem;
+  background: var(--m-panel-solido);
+  border: 1px solid var(--m-linea);
+  border-radius: .8rem;
+  box-shadow: var(--m-sombra-alta);
+}
+.barra-seleccion .fila { flex-wrap: wrap; }
+
+
+/* El brillo 3D de la imagen de la ficha (perspective-card.js, instanciado por
+   abrirFicha() en app.js) vive en brillo.css, junto con el de las cartas del
+   álbum: es el mismo mecanismo en los dos sitios y no tenía sentido partirlo
+   en dos hojas de estilo. .ficha-imagen aquí solo necesita hacerle sitio. */
+.ficha-imagen { position: relative; border-radius: .5rem; overflow: hidden; }
+
 /* ═══════════════════════════════════════════════════════════════════════════
  *  NÚCLEO
  *

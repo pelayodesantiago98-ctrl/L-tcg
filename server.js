@@ -25,6 +25,8 @@ const sso = require('/usr/local/lib/lepayimio/sso');
 const temas = require('/usr/local/lib/lepayimio/tema');
 const ingesta = require('./lib/ingesta');
 const imagenes = require('./lib/imagenes');
+const mejoraImagenes = require('./lib/mejora-imagenes');
+const mejoraImagenesPtcgio = require('./lib/mejora-imagenes-ptcgio');
 
 const app = express();
 app.set('trust proxy', true);   // detrás de nginx y de Cloudflare
@@ -60,6 +62,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api', require('./routes/collection'));
 app.use('/api/binder', require('./routes/binder'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/amigos', require('./routes/amigos'));
 
 /* Los estáticos con caché corta y versión por fecha de fichero: así un cambio
    de CSS se ve sin tener que explicarle a nadie cómo se vacía la caché. */
@@ -87,7 +90,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
  * Con ?v=<fecha del fichero> la URL cambia cuando cambia el contenido, así que
  * la caché sigue siendo de una hora pero deja de estorbar.
  */
-const ESTATICOS_VERSIONADOS = ['/css/estilo.css', '/js/app.js'];
+const ESTATICOS_VERSIONADOS = ['/css/estilo.css', '/css/brillo.css', '/js/app.js'];
 let indexCache = null;
 
 function indexHtml() {
@@ -147,7 +150,7 @@ app.get(/^(?!\/api\/).*/, (req, res, next) => {
    * es mucho peor negocio que estas ocho palabras.
    */
   const VISTAS = new Set(['entrar', 'registro', 'coleccion', 'enciclopedia',
-                          'deseadas', 'album', 'perfil', 'admin']);
+                          'deseadas', 'albumes', 'album', 'perfil', 'admin', 'amigos']);
   if (req.path !== '/' && !VISTAS.has(req.path.split('/')[1])) {
     return next();
   }
@@ -175,4 +178,6 @@ app.listen(PUERTO, '127.0.0.1', () => {
   ingesta.reanudarSiHacia();
   imagenes.reanudarPrecarga();
   imagenes.vigilar();
+  mejoraImagenes.reanudarSiHacia();
+  mejoraImagenesPtcgio.reanudarSiHacia();
 });

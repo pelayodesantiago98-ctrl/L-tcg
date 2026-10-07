@@ -192,7 +192,21 @@ function consultar({
   soloMias = false, soloDeseadas = false, soloFaltan = false,
   orden = 'expansion', dir = 'asc', pagina = 1, limite = 60, __like = null,
 } = {}) {
-  const donde = [];
+  // Las code card ("Online Code Card", "Code Card - ...", "Live Code Card",
+  // "Mega Evolution Live Code Card: ..."...) no son cartas de verdad, son el
+  // código de canje que trae el producto: no se pueden coleccionar, así que
+  // no se listan nunca, en ningún filtro. LIKE '%Code Card%' y no una lista
+  // de nombres exactos a propósito: cada nueva expansión trae su propia
+  // variante del texto (ya van tres), y una lista fija se queda corta con la
+  // siguiente. Igual con una expansión marcada oculta entera (ver
+  // Expansion.ocultar) -venía de la API pero no es un producto
+  // coleccionable-, se cae de raíz aquí para que no haga falta repetir la
+  // condición en cada sitio que llama a consultar().
+  const donde = [
+    "e.oculta = 0",
+    "c.rareza IS NOT 'Code Card'",
+    "c.nombre NOT LIKE '%Code Card%'",
+  ];
   const par = { usuarioId: usuarioId || 0 };
   if (__like) { donde.push('c.busca LIKE @q'); par.q = '%' + __like + '%'; }
 
@@ -261,11 +275,18 @@ const porId = (id, usuarioId = 0) => db.prepare(`
   LEFT JOIN coleccion col ON col.carta_id = c.id AND col.usuario_id = ?
   WHERE c.id = ?`).get(usuarioId, id);
 
-const expansiones = (soloConCartas = false) => db.prepare(`
-  SELECT e.*, (SELECT COUNT(*) FROM cartas c WHERE c.set_code = e.set_code) AS cartas
+// Las code card no cuentan como cartas del set -ver consultar()-, así que
+// tampoco cuentan aquí: si no, ningún set con una mezclada llegaría nunca al
+// 100% por mucho que el usuario tuviera todo lo coleccionable.
+const SIN_CODE_CARD = "(c.rareza IS NOT 'Code Card' AND c.nombre NOT LIKE '%Code Card%')";
+const expansiones = (soloConCartas = false, usuarioId = 0) => db.prepare(`
+  SELECT e.*, (SELECT COUNT(*) FROM cartas c WHERE c.set_code = e.set_code AND ${SIN_CODE_CARD}) AS cartas,
+         (SELECT COUNT(*) FROM coleccion col JOIN cartas c ON c.id = col.carta_id
+          WHERE c.set_code = e.set_code AND col.usuario_id = @usuarioId AND col.cantidad > 0 AND ${SIN_CODE_CARD}) AS tenidas
   FROM expansiones e
-  ${soloConCartas ? 'WHERE (SELECT COUNT(*) FROM cartas c WHERE c.set_code = e.set_code) > 0' : ''}
-  ORDER BY e.fecha_orden IS NULL, e.fecha_orden DESC, e.nombre`).all();
+  WHERE e.oculta = 0
+  ${soloConCartas ? `AND (SELECT COUNT(*) FROM cartas c WHERE c.set_code = e.set_code AND ${SIN_CODE_CARD}) > 0` : ''}
+  ORDER BY e.fecha_orden IS NULL, e.fecha_orden DESC, e.nombre`).all({ usuarioId });
 
 const valoresDe = (columna) => {
   if (!['rareza', 'tipo'].includes(columna)) return [];
@@ -342,14 +363,140 @@ const progresoExpansiones = (usuarioId) => db.prepare(`
          COUNT(c.id) cartas,
          SUM(CASE WHEN COALESCE(col.cantidad, 0) > 0 THEN 1 ELSE 0 END) tengo
   FROM expansiones e
-  JOIN cartas c ON c.set_code = e.set_code
+  JOIN cartas c ON c.set_code = e.set_code AND ${SIN_CODE_CARD}
   LEFT JOIN coleccion col ON col.carta_id = c.id AND col.usuario_id = ?
+  WHERE e.oculta = 0
   GROUP BY e.set_code
   HAVING cartas > 0
   ORDER BY e.fecha_orden IS NULL, e.fecha_orden DESC, e.nombre`).all(usuarioId);
 
+/* ── Exportar la wishlist al importador de wants de Cardmarket ─────────────
+ *
+ * Cardmarket no admite ni expansion ni numero de coleccionista: identifica
+ * cada carta por el nombre mas los nombres de su habilidad y sus ataques. Su
+ * propia ayuda lo dice con un ejemplo: "2x Umbreon" no se anade, pero
+ * "2x Umbreon EX Moon Mirage Onyx" si. Por eso la linea hay que reconstruirla
+ * a partir de tres columnas distintas y no basta con el nombre.
+ *
+ * Consecuencia inevitable: una carta sin ataques ni habilidad guardados no se
+ * puede exportar, porque no hay con que desambiguarla. Esas se devuelven
+ * aparte, con su enlace, para anadirlas a mano.
+ */
+
+const TOPE_LISTA = 150;   // lo que admite una wants list de Cardmarket
+
+// 'Prime', 'LEGEND' y 'BREAK' son parte del nombre del producto en Cardmarket
+// y van al final de la linea; el resto de parentesis (variantes de impresion,
+// numeros sueltos) no le dicen nada al importador y solo estorban.
+const SUFIJOS_FINALES = ['Prime', 'LEGEND', 'BREAK'];
+
+const CLAVES_HABILIDAD = ['Ability', 'Poke-POWER', 'Pok\u00e9-POWER', 'Poke-BODY',
+  'Pok\u00e9-BODY', 'Poke-Power', 'Pok\u00e9-Power', 'Poke-Body', 'Pok\u00e9-Body',
+  'Pokemon Power', 'Pok\u00e9mon Power', 'VSTAR Power', 'V-UNION'];
+
+const sinEtiquetas = (s) => String(s || '').replace(/<[^>]+>/g, ' ')
+  .replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+
+/* El coste '[1L]', el dano '(50x)' y la descripcion que va detras no forman
+   parte del nombre del ataque. Hay que cortar por el salto ANTES de limpiar
+   las etiquetas: si se quitan los <br> primero, la descripcion se pega al
+   nombre y ya no queda por donde separarlos. */
+function nombreDeAtaque(bruto) {
+  const cortado = String(bruto || '').split(/<br|\r|\n/)[0];
+  const limpio = sinEtiquetas(cortado).replace(/^(?:\s*\[[^\]]*\]\s*)+/, '').split('(')[0];
+  // Hay ataques sin dano y sin <br>, donde la descripcion va detras de un
+  // ' - ' o de un punto: 'Synthesis - Search your deck for a G Energy card...'.
+  return recorta(limpio);
+}
+
+function ataquesDe(campo) {
+  let lista;
+  try { lista = JSON.parse(campo || '[]'); } catch { return []; }
+  if (!Array.isArray(lista)) return [];
+  return lista.map(nombreDeAtaque).filter(Boolean);
+}
+
+/* La habilidad vive en la columna `texto`, y no en un campo propio, con dos
+   formas segun la epoca de la carta: el nombre dentro de la etiqueta
+   ("<strong>Ability: Excited Heal</strong>") o justo detras de ella
+   ("<b>Poke-BODY</b> Psychic Wing"). Si el texto no empieza por una de las
+   claves conocidas no es una habilidad, es el texto de un entrenador. */
+/* El nombre de la habilidad acaba donde empieza su descripcion: un ' - ' con
+   espacios o el primer punto. Los guiones sin espacios se respetan, que
+   'Adrena-Brain' es un nombre y no dos. */
+function recorta(s) {
+  return String(s).split(/\s+[-\u2013\u2014]\s+/)[0].split('.')[0].trim();
+}
+
+function habilidadDe(texto) {
+  if (!texto) return '';
+  const m = String(texto).match(/<(?:strong|b)>([\s\S]*?)<\/(?:strong|b)>/);
+  if (!m) return '';
+  const dentro = sinEtiquetas(m[1]);
+  const clave = CLAVES_HABILIDAD.find((c) => dentro.startsWith(c));
+  if (!clave) return '';
+  const resto = dentro.slice(clave.length).replace(/^[\s:\u2014\u2013-]+/, '').trim();
+  if (resto) return recorta(resto);
+  const cola = String(texto).slice(m.index + m[0].length).split(/<br|\r|\n/)[0];
+  return recorta(sinEtiquetas(cola).replace(/^[\s:\u2014\u2013-]+/, ''));
+}
+
+function nombreYSufijo(nombre) {
+  // 'Latias - 9/20 (Dragon Vault)' -> 'Latias'; 'Magnezone (Prime)' -> Prime.
+  let n = String(nombre || '').split(/\s+-\s+/)[0];
+  let sufijo = '';
+  for (const par of n.match(/\(([^)]*)\)/g) || []) {
+    const dentro = par.slice(1, -1).trim();
+    if (SUFIJOS_FINALES.includes(dentro)) sufijo = dentro;
+  }
+  n = n.replace(/\s*\([^)]*\)/g, '').trim();
+  return { nombre: n, sufijo };
+}
+
+function lineaDe(carta) {
+  const { nombre, sufijo } = nombreYSufijo(carta.nombre);
+  const partes = [nombre];
+  const hab = habilidadDe(carta.texto);
+  if (hab) partes.push(hab);
+  partes.push(...ataquesDe(carta.ataques));
+  if (sufijo) partes.push(sufijo);
+  return partes.filter(Boolean).join(' ');
+}
+
+function exportarDeseadas(usuarioId) {
+  const filas = db.prepare(`
+    SELECT c.nombre, c.ataques, c.texto, c.cm_url, e.nombre AS expansion
+    FROM coleccion col
+    JOIN cartas c ON c.id = col.carta_id
+    LEFT JOIN expansiones e ON e.set_code = c.set_code
+    WHERE col.usuario_id = ? AND col.deseada = 1
+    ORDER BY c.nombre`).all(usuarioId);
+
+  /* Se agrupan las lineas identicas en vez de repetirlas: como el importador
+     ignora la expansion, la misma carta en dos sets produce la misma linea y
+     pedirla dos veces no anade nada. Se suma la cantidad y ya. */
+  const cuenta = new Map();
+  const sinDatos = [];
+  for (const f of filas) {
+    const tieneConQue = habilidadDe(f.texto) || ataquesDe(f.ataques).length;
+    if (!tieneConQue) {
+      sinDatos.push({ nombre: f.nombre, expansion: f.expansion || '', url: f.cm_url || '' });
+      continue;
+    }
+    const linea = lineaDe(f);
+    cuenta.set(linea, (cuenta.get(linea) || 0) + 1);
+  }
+
+  const lineas = [...cuenta].map(([linea, n]) => `${n}x ${linea}`);
+  const bloques = [];
+  for (let i = 0; i < lineas.length; i += TOPE_LISTA) {
+    bloques.push(lineas.slice(i, i + TOPE_LISTA));
+  }
+  return { bloques, sinDatos, total: filas.length, exportadas: lineas.length, tope: TOPE_LISTA };
+}
+
 module.exports = {
   guardarLote, guardarExpansiones, consultar, porId, expansiones,
   valoresDe, sugerencias, cuantasCartas, numeroOrden, fechaOrden, ORDENES,
-  marcar, resumen, progresoExpansiones,
+  marcar, resumen, progresoExpansiones, exportarDeseadas,
 };

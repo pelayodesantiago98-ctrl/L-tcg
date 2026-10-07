@@ -119,6 +119,20 @@
 [hidden] { display: none !important; }
 
 html, body { margin: 0; padding: 0; }
+/*
+ * El hueco de la barra de scroll vertical, reservado SIEMPRE, haya o no
+ * contenido para necesitarla: si no, cualquier cambio de alto que cruce el
+ * borde del viewport —una pagina del album con cartas un pelin mas altas
+ * que la anterior, una imagen que termina de cargar— hace aparecer o
+ * desaparecer la barra de golpe, y eso desplaza TODO lo centrado (la
+ * carpeta del album entre ellos) unos cuantos pixeles a los lados. Con el
+ * giro de pagina a medio hacer, la carpeta real salta de sitio mientras el
+ * fantasma fijo (posicionar() en app.js) se queda donde la midio, y quedan
+ * descuadrados el uno del otro —se ve como un recuadro de puntos suelto a
+ * un lado de la carpeta de verdad—. Reservar el hueco siempre quita de en
+ * medio el salto entero.
+ */
+html { scrollbar-gutter: stable; }
 
 body {
   min-height: 100dvh;
@@ -178,6 +192,9 @@ body {
 }
 
 .nav { display: flex; gap: 0.25rem; margin-left: auto; align-items: center; }
+/* Ocultos salvo en el panel lateral de escritorio (ahi abajo, desde 64rem):
+   en movil las secciones siguen viviendo solo dentro de #menu, como antes. */
+.nav-enlaces { display: none; }
 
 .nav a {
   padding: 0.35rem 0.7rem;
@@ -235,6 +252,73 @@ body {
 }
 .menu button:hover, .menu a:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); }
 .menu hr { margin: 0.3rem 0; border: 0; border-top: 1px solid var(--border); }
+
+/* La tarjeta de perfil al principio del menú: la foto manda, el texto se
+   recorta antes que empujar el ancho del desplegable. */
+.menu a.menu-perfil { padding: 0.6rem 0.6rem; }
+.menu-perfil-foto {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  flex: none;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 0.75rem;
+}
+.menu-perfil-datos { display: flex; flex-direction: column; min-width: 0; gap: 0.1rem; }
+.menu-perfil-datos b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.92rem;
+}
+.menu-perfil-rol { color: var(--muted); font-size: 0.75rem; }
+
+/* Pestañas de la página de Amigos. */
+.pestanas { display: flex; gap: 0.2rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+.pestana {
+  padding: 0.55rem 0.9rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.pestana:hover { color: var(--fg); }
+.pestana.activa { color: var(--fg); border-bottom-color: var(--accent); font-weight: 700; }
+
+/* El aviso de "estás viendo lo de X" en colección, deseadas y álbum. */
+.aviso-amigo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+}
+
+/* Filas de persona: en "Mis amigos", "Agregar" y "Solicitudes". */
+.persona-fila { align-items: center; padding: 0.5rem 0; }
+.persona-fila + .persona-fila { border-top: 1px solid var(--border); }
+.persona-foto {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex: none;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 0.72rem;
+}
+.persona-nombre { font-weight: 600; }
 
 /* ── Estructura ─────────────────────────────────────────────────────────── */
 
@@ -436,14 +520,21 @@ input:-webkit-autofill, input:-webkit-autofill:focus {
 }
 .carta:hover { transform: translateY(-2px); border-color: var(--accent); }
 
-.carta-img {
-  display: block;
+.carta-imagen {
+  position: relative;
   width: 100%;
   /* Proporción real de una carta de Pokémon: 63 x 88 mm. */
   aspect-ratio: 63 / 88;
-  object-fit: cover;
-  background: color-mix(in srgb, var(--fg) 8%, transparent);
 }
+/* Mismo posicionamiento que .hueco .perspective-card en el álbum: la carta
+   llena el hueco que le reserva .carta-imagen por su aspect-ratio. */
+.carta .perspective-card { position: absolute; inset: 0; z-index: 1; perspective: 2600px; }
+/* El fondo de relleno va en la cara de la carta y no en .carta-imagen: al
+   ampliarse, la librería saca .perspective-card de aquí y dentro solo queda
+   su marcador de sitio (invisible, puesto por ella). Si el fondo fuera de
+   .carta-imagen se quedaría pintado ahí quieto como una sombra fija mientras
+   la carta de verdad vuela hacia el centro. */
+.carta .perspective-card__artwork--front { background: color-mix(in srgb, var(--fg) 8%, transparent); }
 
 .carta-cuerpo { padding: 0.45rem 0.55rem 0.6rem; }
 .carta-nombre {
@@ -459,7 +550,7 @@ input:-webkit-autofill, input:-webkit-autofill:focus {
 .carta-meta { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.72rem; }
 .carta-precio { color: var(--oro); font-weight: 700; }
 
-.marcas { position: absolute; top: 0.35rem; right: 0.35rem; display: flex; gap: 0.25rem; }
+.marcas { position: absolute; top: 0.35rem; right: 0.35rem; z-index: 2; display: flex; gap: 0.25rem; }
 .marca {
   display: grid;
   place-items: center;
@@ -560,39 +651,168 @@ input:-webkit-autofill, input:-webkit-autofill:focus {
 .precio-caja b { display: block; color: var(--oro); font-size: 1rem; }
 .precio-caja span { color: var(--muted); font-size: 0.7rem; }
 
-/* ── Binder (álbum) ─────────────────────────────────────────────────────── */
+/* ── Galería "Mis álbumes" ──────────────────────────────────────────────── */
+
+.rejilla-albumes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.9rem;
+}
+
+.tarjeta-album {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 1.1rem 1rem;
+  color: inherit;
+  background: var(--card);
+  backdrop-filter: var(--cristal);
+  -webkit-backdrop-filter: var(--cristal);
+  border: 1px solid var(--border);
+  border-radius: var(--radio);
+  text-align: left;
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .15s, transform .1s;
+}
+.tarjeta-album:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+.tarjeta-album-icono {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 0.6rem;
+}
+.tarjeta-album-icono .ico { width: 1.4rem; height: 1.4rem; }
+
+.tarjeta-album-nombre { font-weight: 700; font-size: 1rem; }
+.tarjeta-album-meta { color: var(--muted); font-size: 0.82rem; }
+
+/* La galería de colecciones de la Enciclopedia: el logo manda, por eso es
+   más ancha que alta y no un icono cuadrado como el álbum. */
+.rejilla-colecciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.9rem;
+}
+.tarjeta-coleccion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 0.75rem y no 0.5rem: el aire que trae cada logo por dentro varía mucho
+     según de dónde salió (TCGdex, CardDex, pokemontcgapi...), así que con
+     poco margen fijo algunos quedaban pegados al "X/Y cartas" de debajo. */
+  gap: 0.75rem;
+  padding: 1.1rem 1rem;
+  color: inherit;
+  background: var(--card);
+  backdrop-filter: var(--cristal);
+  -webkit-backdrop-filter: var(--cristal);
+  border: 1px solid var(--border);
+  border-radius: var(--radio);
+  text-align: center;
+  text-decoration: none;
+  transition: border-color .15s, transform .1s;
+}
+.tarjeta-coleccion:hover { border-color: var(--accent); transform: translateY(-2px); }
+.tarjeta-coleccion-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 4.2rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+/* max-width/max-height + width/height:auto, no 100% fijo ni grid: con
+   grid+place-items:center (lo que había antes) el porcentaje del hijo se
+   resuelve contra el tamaño de la pista implícita, no contra la altura real
+   de la caja, y algunos navegadores acababan recortando el logo en vez de
+   encajarlo -justo el problema contrario al de antes, tapaba por el otro
+   lado-. Esta es la receta de toda la vida para esto: deja que el navegador
+   calcule el tamaño intrínseco de la imagen y lo tope por arriba, sin
+   ambigüedad posible. */
+.tarjeta-coleccion-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+.tarjeta-coleccion-generico {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  border-radius: 0.6rem;
+}
+.tarjeta-coleccion-generico .ico { width: 1.5rem; height: 1.5rem; }
+/* El atributo hidden lo pone el propio navegador como estilo de muy baja
+   prioridad (origen "user agent"): como aquí ya hay un display:grid puesto a
+   mano para ese mismo elemento, gana el nuestro y hidden no hacía nada. Hay
+   que repetirlo en la propia hoja para que de verdad oculte. */
+.tarjeta-coleccion-generico[hidden] { display: none; }
+.tarjeta-coleccion-nombre { font-weight: 700; font-size: 0.92rem; }
+.tarjeta-coleccion-meta { color: var(--muted); font-size: 0.78rem; }
+.tarjeta-coleccion-barra { display: block; width: 100%; }
+
+.tarjeta-album-nueva {
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  border-style: dashed;
+  color: var(--muted);
+}
+.tarjeta-album-nueva:hover { color: var(--accent); }
+.tarjeta-album-mas {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+/* El diálogo de crear álbum reutiliza .ficha (el mismo velo que la ficha de
+   carta) pero es un formulario de una sola columna, no imagen + datos. */
+.panel-dialogo {
+  display: block;
+  width: min(26rem, 100%);
+}
+.panel-dialogo label { display: block; margin-bottom: 0.3rem; font-size: 0.85rem; color: var(--muted); }
+.panel-dialogo input, .panel-dialogo select {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: inherit;
+  font: inherit;
+}
+.panel-dialogo [aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* ── Binder (álbum) ─────────────────────────────────────────────────────── *
+ * El aspecto de verdad (tapa, lomo, anillas, fundas, las 12 gamas) vive en
+ * binder.css, copiado de holonook.es: no tenía sentido mantener aquí una
+ * textura de cuero propia Y la de la referencia a la vez. Lo que queda aquí
+ * es solo lo estructural, que binder.css no toca. */
 
 .album {
   --slots-x: 3;
-  position: relative;
   margin: 0 auto;
-  padding: 1.1rem;
   max-width: 44rem;
-  border-radius: 0.9rem;
-  /* Textura de carpeta: cuero oscuro con un brillo diagonal. Va en CSS y no
-     como imagen para no bajar nada y que siga bien en cualquier pantalla. */
-  background:
-    linear-gradient(135deg, rgb(255 255 255 / 0.06), transparent 45%),
-    repeating-linear-gradient(45deg, rgb(0 0 0 / 0.05) 0 2px, transparent 2px 5px),
-    linear-gradient(160deg, #3a2c22, #241b15 60%, #1a1310);
-  box-shadow: inset 0 0 60px rgb(0 0 0 / 0.55), 0 10px 30px rgb(0 0 0 / 0.35);
 }
 
-/* Las anillas de la carpeta. */
-.album::before {
-  content: "";
-  position: absolute;
-  top: 8%;
-  bottom: 8%;
-  left: 0.35rem;
-  width: 0.5rem;
-  border-radius: 999px;
-  background: repeating-linear-gradient(
-    to bottom, #6b6b6b 0 0.6rem, transparent 0.6rem 2.2rem);
-  opacity: 0.55;
-}
-
-.hojas { perspective: 1600px; }
+.hojas { position: relative; perspective: 2600px; }
 
 .hoja {
   display: grid;
@@ -601,26 +821,9 @@ input:-webkit-autofill, input:-webkit-autofill:focus {
   transform-origin: left center;
 }
 
-/* Pasar página: la hoja gira sobre su lomo. Dos nombres porque el sentido
-   importa, ir hacia delante no se ve igual que volver atrás. */
-/* ease-out y no ease-in: una hoja que pasa está SALIENDO, y lo que sale
-   tiene que arrancar rápido. Con ease-in el primer tercio del giro casi no se
-   mueve, que es justo el momento en el que estás mirando. */
-.hoja.pasa-adelante { animation: pasaAdelante 0.42s cubic-bezier(0.23, 1, 0.32, 1); }
-.hoja.pasa-atras    { animation: pasaAtras 0.42s ease-out; }
-
-@keyframes pasaAdelante {
-  from { transform: rotateY(0deg);   opacity: 1; }
-  to   { transform: rotateY(-88deg); opacity: 0.25; }
-}
-@keyframes pasaAtras {
-  from { transform: rotateY(-88deg); opacity: 0.25; }
-  to   { transform: rotateY(0deg);   opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hoja.pasa-adelante, .hoja.pasa-atras { animation: none; }
-}
+/* El giro de página de verdad vive en binder.css —es el mecanismo exacto de
+   binder.js › animarPasada(), con sus dos caras—, junto con el resto de lo
+   copiado de holonook.es. Aquí solo quedan .hojas/.hoja, que son de la casa. */
 
 .hueco {
   position: relative;
@@ -632,17 +835,17 @@ input:-webkit-autofill, input:-webkit-autofill:focus {
 }
 .hueco img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-/* El hueco vacío es negro con el número del sitio, para saber cuál es cuál
-   al arrastrar. */
+/* El hueco vacío lleva el número del sitio abajo a la izquierda —para saber
+   cuál es cuál al arrastrar— y el destello centrado (binder.css lo coloca y
+   le da su brillo; el dibujo lo trae index.html). */
 .hueco.vacio::after {
   content: attr(data-num);
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: rgb(255 255 255 / 0.18);
-  font-size: 1.4rem;
-  font-weight: 800;
+  left: 9%;
+  bottom: 6%;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .05em;
 }
 
 .hueco.falta img { filter: grayscale(1) brightness(0.5); }
@@ -660,7 +863,9 @@ input:-webkit-autofill, input:-webkit-autofill:focus {
   font-weight: 800;
 }
 
-.hueco.arrastrando { opacity: 0.35; }
+/* Mientras se arrastra, la carta de verdad se esconde: el fantasma de
+   binder.css es quien la representa por el camino. */
+.hueco.arrastrando .perspective-card { opacity: 0; }
 .hueco.destino { outline: 2px dashed var(--accent); outline-offset: -3px; }
 
 .barra {
@@ -677,17 +882,10 @@ input:-webkit-autofill, input:-webkit-autofill:focus {
   transition: width 0.35s ease;
 }
 
-.album-pie {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  align-items: center;
-  justify-content: center;
-  margin-top: 0.9rem;
-  color: #d8d4cf;
-  font-size: 0.85rem;
-}
-.album-pie .btn-suave { background: rgb(255 255 255 / 0.1); color: #fff; border-color: rgb(255 255 255 / 0.2); }
+/* La navegación se subió encima de la carpeta —como en la referencia que se
+   está copiando— así que va sobre el fondo normal de la página, no sobre el
+   cuero: nada de texto blanco fijo aquí, el de siempre vale. */
+.album-nav-pie { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
 
 /* ── Tablas ─────────────────────────────────────────────────────────────── */
 
@@ -1177,4 +1375,110 @@ body:has(.topbar[hidden]) { padding-top: 0; }
 
 @media (hover: none) {
   .quitar-carta { opacity: .85; }
+}
+
+/* ── El menú de la barra, fijo como ella ─────────────────────────────────
+   La barra pasó a `fixed` más arriba en esta misma hoja, pero el menú se
+   quedó en `absolute`: como no tiene ningún antepasado posicionado, su bloque
+   contenedor es el documento, así que al bajar la página se quedaba clavado
+   arriba mientras el avatar que lo abre seguía a la vista. `fixed` lo cuelga
+   de la ventana, igual que la barra, y así bajan juntos.
+
+   El `top` sale de la medida de la propia barra —la misma que ya deja el
+   hueco de `body`— y no de un número a mano: en estrecho la barra crece de
+   alto y un 3.1rem escrito hoy se descuadraría mañana.
+
+   El alto máximo es la contrapartida de fijarlo: antes el menú crecía con la
+   página y siempre había sitio debajo; ahora vive dentro de la ventana, y en
+   un móvil apaisado la lista no cabe entera. */
+.menu {
+  position: fixed;
+  top: calc(var(--alto-barra, 3.6rem) + .35rem);
+  max-height: calc(100vh - var(--alto-barra, 3.6rem) - 1.2rem);
+  max-height: calc(100dvh - var(--alto-barra, 3.6rem) - 1.2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/*
+ * ── Panel lateral en escritorio, como holonook.es ───────────────────────
+ *
+ * En móvil la barra sigue siendo una franja arriba y las secciones
+ * (Colección, Álbum...) siguen dentro de #menu, el desplegable del avatar
+ * —nada de esto les llega, todo va dentro de la media query—. Desde 64rem
+ * la misma barra (.topbar) pasa a ser un panel fijo a la izquierda, con
+ * las secciones siempre a la vista en vez de escondidas en el menú: los
+ * enlaces nuevos de .nav-enlaces (en el HTML, dentro de .nav) se enseñan
+ * aquí, y los que ya había dentro de #menu para esas mismas secciones
+ * (.solo-movil) se esconden, que si no saldrían repetidos.
+ *
+ * #menu no desaparece: se queda para lo que de verdad es un menú de
+ * cuenta (Editar perfil, Tema, Desconectarse, Inicio de lepayimio), solo
+ * que ahora se abre desde el avatar que vive al pie del panel, no desde
+ * la esquina de una barra que ya no está ahí.
+ */
+@media (min-width: 64rem) {
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    right: auto;
+    width: 15rem;
+    height: 100vh;
+    height: 100dvh;
+    padding: 1rem .75rem;
+    gap: .25rem;
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+  .brand { padding: 0 .45rem .9rem; }
+  .nav { flex-direction: column; align-items: stretch; gap: .15rem; margin-left: 0; }
+  .nav-enlaces { display: flex; flex-direction: column; gap: .15rem; }
+  .nav-enlaces a {
+    display: flex; align-items: center; gap: .65rem;
+    padding: .55rem .7rem;
+    color: var(--muted);
+    border-radius: .6rem;
+    font-size: .92rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .nav-enlaces a:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 6%, transparent); }
+  .nav-enlaces a.activo { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .nav-enlaces .menu-icono { width: 1.2rem; height: 1.2rem; flex: none; opacity: .85; }
+  .nav-enlaces a.activo .menu-icono { opacity: 1; }
+
+  /* La foto de perfil ocupa el sitio del icono en la fila "Perfil", pero más
+     grande: es la que manda en el panel, no un icono más. */
+  .nav-perfil-foto {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    flex: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.14);
+    font-weight: 800;
+    font-size: 0.78rem;
+  }
+  .nav-perfil { padding-top: .7rem; padding-bottom: .7rem; }
+
+  .avatar { margin-top: auto; }
+
+  body { padding-top: 0; padding-left: 15rem; }
+  body:has(.topbar[hidden]) { padding-left: 0; }
+
+  /* Las secciones ya están en el panel: dentro del menú del avatar solo
+     queda lo que de verdad es cuenta. */
+  #menu .solo-movil { display: none; }
+  .menu {
+    top: auto;
+    bottom: 1rem;
+    left: .75rem;
+    right: auto;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+  }
 }

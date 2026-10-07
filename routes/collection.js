@@ -44,11 +44,16 @@ router.get('/sugerencias', exigeSesion, (req, res, next) => {
 router.get('/filtros', exigeSesion, (req, res, next) => {
   try {
     res.json({
-      expansiones: Card.expansiones(true),
+      expansiones: Card.expansiones(true, req.usuario.id),
       rarezas: Card.valoresDe('rareza'),
       tipos: Card.valoresDe('tipo'),
     });
   } catch (e) { next(e); }
+});
+
+// Las deseadas en el formato que traga el importador de wants de Cardmarket.
+router.get('/deseadas/exportar', exigeSesion, (req, res, next) => {
+  try { res.json(Card.exportarDeseadas(req.usuario.id)); } catch (e) { next(e); }
 });
 
 router.get('/resumen', exigeSesion, (req, res, next) => {
@@ -75,14 +80,31 @@ router.post('/cartas/:id/marcar', exigeSesion, (req, res, next) => {
 
 /*
  * Proxy con caché en disco. La primera vez gasta una petición de la cuota; a
- * partir de ahí la sirve nginx-style desde el fichero. El navegador la cachea
- * un año porque el identificador de la carta no se reutiliza nunca.
+ * partir de ahí la sirve nginx-style desde el fichero.
+ *
+ * Ya NO es "immutable": la mejora de imágenes (lib/mejora-imagenes.js)
+ * sustituye el fichero de una carta cuando encuentra una versión mejor en
+ * TCGdex, con el mismo id de siempre. Con immutable el navegador no volvía
+ * a preguntar en un año y la mejora quedaba invisible aunque el servidor ya
+ * tuviera el fichero bueno. El ETag es el tamaño+fecha del propio fichero:
+ * cambia solo cuando el fichero cambia de verdad, así que sigue sin gastar
+ * red en el caso normal (plantilla sin tocar, 304) y se entera sin que haga
+ * falta ningún aviso aparte cuando sí cambia.
+ *
+ * Una hora y no un año: la misma que ya lleva el resto de estáticos en
+ * server.js. Pasada esa hora el navegador vuelve a preguntar —con el ETag,
+ * así que normalmente es un 304 vacío, no la imagen entera otra vez— en vez
+ * de quedarse ciego hasta dentro de doce meses.
  */
 router.get('/imagen/:id', exigeSesion, async (req, res) => {
   const tamano = req.query.size === 'high' ? 'high' : 'low';
   try {
     const fichero = await img.asegurar(req.params.id, tamano);
-    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    const st = fs.statSync(fichero);
+    const etag = `"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
+    res.set('Cache-Control', 'public, max-age=3600, must-revalidate');
+    res.set('ETag', etag);
+    if (req.headers['if-none-match'] === etag) return res.status(304).end();
     res.type(img.tipoDeRuta(fichero));
     fs.createReadStream(fichero).pipe(res);
   } catch (e) {

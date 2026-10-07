@@ -1,0 +1,346 @@
+/*
+ * binder.css — el aspecto del álbum, adaptado de holonook.es/css/binder.css.
+ *
+ * Los nombres cambian (su .spread es nuestro #carpeta.album; su .page es
+ * nuestra .hoja; su .slot/.cslot es nuestro .hueco) porque el álbum de l-tcg
+ * ya tenía su propia estructura —#hojas en flex, con .hojas.abierto para
+ * repartir una hoja sola o dos— y no tenía sentido rehacerla solo para que
+ * los nombres coincidieran. Los VALORES (colores de cada gama, sombras,
+ * radios, el degradado del lomo) sí son los mismos, copiados tal cual.
+ *
+ * Lo que no se trajo: la rejilla de dos columnas fija de .spread (aquí
+ * sigue mandando .hojas.abierto, que ya resolvía una hoja sola o dos) y el
+ * tirador lateral .pasar para pasar página arrastrando del borde —se sigue
+ * pasando con los botones Anterior/Siguiente y "Ir a…", que es donde vive
+ * esa función en l-tcg.
+ */
+
+#carpeta.album {
+  --lomo: 34px;
+  --cover-a: #fffaff; --cover-b: #fffcff; --cover-c: #f3effa;
+  --page-a: #fbf9ff; --page-b: #ece8f7; --slot-a: #efecf8; --slot-b: #dcd7ec; --ink: #6c6a84;
+  position: relative;
+  isolation: isolate;
+  padding: 24px 22px 28px;
+  border-radius: 28px;
+  background: linear-gradient(115deg, var(--cover-a), var(--cover-b) 31%, var(--cover-c));
+  box-shadow: 0 32px 45px -24px rgba(73,77,110,.44), 0 9px 15px -7px rgba(87,91,114,.4),
+    inset 0 2px 2px rgba(255,255,255,.9), inset 0 -4px 3px rgba(0,0,0,.1), 0 0 0 1px rgba(0,0,0,.07);
+}
+/* Pespunte de la tapa. */
+#carpeta.album::before {
+  content: ""; position: absolute; inset: 8px; z-index: 0; pointer-events: none;
+  border: 1px dashed rgba(120,110,140,.38); border-radius: 22px;
+}
+/* Lomo metálico central, detrás de las anillas. */
+#carpeta.album::after {
+  content: ""; position: absolute; z-index: 0; pointer-events: none;
+  top: 18px; bottom: 22px; left: 50%; width: calc(var(--lomo) - 12px); transform: translateX(-50%);
+  border-radius: 12px; border: 1px solid rgba(150,140,150,.55);
+  background: linear-gradient(90deg, #665f62 0%, #e8e3e4 10%, #fff 18%, #a8a2a8 30%, #e6e1e4 49%, #fcf8f9 65%, #99959f 84%, #ede8eb 100%);
+  box-shadow: inset 0 1px 4px #fff, 0 0 8px rgba(50,45,60,.25);
+}
+/* Con una sola hoja (portada) no hay lomo que enseñar en medio. */
+#carpeta.album:not(.abierto)::after,
+#carpeta.album:not(.abierto) .lomo { display: none; }
+
+.hojas { position: relative; z-index: 1; perspective: 2600px; }
+
+/* ---- Hojas: fundas perladas con el apilado de páginas debajo ---- */
+.hoja {
+  box-sizing: border-box; padding: 16px 16px 18px;
+  border: 1px solid rgba(255,255,255,.95);
+  background: linear-gradient(115deg, var(--page-a), var(--page-b) 54%, var(--page-a));
+  box-shadow: 0 1px 0 2px rgba(205,210,224,.55), 0 4px 0 3px rgba(237,240,246,.85), 0 6px 0 4px rgba(201,203,214,.5),
+    0 9px 0 4px rgba(243,240,248,.8), 0 14px 13px -10px #78718b, inset 2px 0 3px rgba(255,255,255,.8);
+}
+.hojas.abierto .hoja:first-child { border-radius: 14px 8px 8px 14px; padding-right: 24px; }
+.hojas.abierto .hoja:last-child  { border-radius: 8px 14px 14px 8px; padding-left: 24px; }
+.hojas:not(.abierto) .hoja { border-radius: 14px; }
+.hoja::before {
+  content: ""; position: absolute; inset: 5px; border: 2px dotted rgba(255,255,255,.8);
+  border-radius: 10px; pointer-events: none; z-index: 0;
+}
+
+/* ---- Fundas (huecos) ---- */
+.hueco {
+  background: linear-gradient(145deg, var(--slot-a), var(--slot-b));
+  box-shadow: inset 0 0 0 2px rgba(233,237,247,.66), inset 0 0 0 4px rgba(191,201,223,.27),
+    inset 0 7px 15px rgba(155,170,197,.12), 0 1px 4px rgba(103,123,154,.13);
+  border: 0;
+}
+/* El bolsillo de plástico alrededor de la carta, con su borde superior. */
+.hueco::before {
+  content: ""; position: absolute; inset: -8px -7px -9px; z-index: -1; pointer-events: none;
+  border-radius: 13px 13px 9px 9px; border: 1px solid rgba(233,237,248,.9);
+  background:
+    linear-gradient(#fff,#fff) 8px 4px/calc(100% - 16px) 1px no-repeat,
+    linear-gradient(rgba(184,199,222,.9),rgba(184,199,222,.9)) 8px 6px/calc(100% - 16px) 1px no-repeat,
+    linear-gradient(121deg, rgba(255,255,255,.61), rgba(239,244,255,.08) 29%, rgba(201,215,231,.18) 70%, rgba(248,249,255,.67));
+  box-shadow: inset 0 2px 2px #fff, inset 2px 0 3px rgba(255,255,255,.87), inset -2px -2px 3px rgba(158,171,195,.42), 1px 2px 3px rgba(105,119,149,.16);
+}
+.hueco.vacio::before { display: none; }
+/* El número del hueco, con la tinta de la gama en vez de blanco fijo. */
+.hueco.vacio::after { color: var(--ink); opacity: .5; }
+/* El destello del hueco vacío: un marco interior tenue y la estrella de
+   index.html (#b-destello), que crece un poco al pasar el ratón. */
+.hueco.vacio::before, .hueco.vacio { cursor: pointer; }
+.hueco.vacio { position: relative; }
+.bstar {
+  position: absolute; left: 50%; top: 47%; width: 31%; max-width: 62px; height: auto; aspect-ratio: 80/90;
+  transform: translate(-50%,-50%); filter: drop-shadow(0 0 9px rgba(255,255,255,.6)); opacity: .55;
+  transition: filter .2s, opacity .2s, transform .2s;
+}
+.hueco.vacio:hover .bstar, .hueco.vacio:focus-visible .bstar {
+  opacity: .9; transform: translate(-50%,-50%) scale(1.12); filter: drop-shadow(0 0 12px rgba(59,108,255,.65));
+}
+
+/* ---- Gamas (las mismas 12 de holonook.es, más "personalizado") ---- */
+#carpeta[data-paleta="glacier"]   { --cover-a:#9cbad0; --cover-b:#e8f6ff; --cover-c:#aacbdd; --page-a:#e1f1f9; --page-b:#bed8e8; --slot-a:#d3e9f5; --slot-b:#afcee2; --ink:#567590; }
+#carpeta[data-paleta="lavender"]  { --cover-a:#b0a0c9; --cover-b:#f2ecff; --cover-c:#c4b3e0; --page-a:#eee8fa; --page-b:#d0c4e6; --slot-a:#e3daf3; --slot-b:#c9bade; --ink:#7e679a; }
+#carpeta[data-paleta="sage"]      { --cover-a:#a0b7ab; --cover-b:#edf6ee; --cover-c:#bccfc0; --page-a:#e6f0e9; --page-b:#c3d8cd; --slot-a:#dbe9df; --slot-b:#bcd3c7; --ink:#587769; }
+#carpeta[data-paleta="rose"]      { --cover-a:#c6adbe; --cover-b:#fff0f6; --cover-c:#dfc2d3; --page-a:#f5e9f1; --page-b:#e3cedd; --slot-a:#f0dfeb; --slot-b:#dcc1d3; --ink:#916d87; }
+#carpeta[data-paleta="midnight"]  { --cover-a:#151c2c; --cover-b:#3d4b67; --cover-c:#20293b; --page-a:#4b5873; --page-b:#303c56; --slot-a:#455570; --slot-b:#29374f; --ink:#d0daed; }
+#carpeta[data-paleta="red"]       { --cover-a:#8f1c2a; --cover-b:#ee5c65; --cover-c:#b3263c; --page-a:#f4d7dd; --page-b:#dc9fac; --slot-a:#edc1cc; --slot-b:#d48f9f; --ink:#793244; }
+#carpeta[data-paleta="orange"]    { --cover-a:#b95117; --cover-b:#ffb76a; --cover-c:#e77a2b; --page-a:#fae7d5; --page-b:#efc29a; --slot-a:#f8d9ba; --slot-b:#eab283; --ink:#8c542c; }
+#carpeta[data-paleta="yellow"]    { --cover-a:#bd941e; --cover-b:#ffe78a; --cover-c:#e6bb39; --page-a:#fbf1cb; --page-b:#e9d690; --slot-a:#f6e8b3; --slot-b:#e5ce7c; --ink:#7a682d; }
+#carpeta[data-paleta="green"]     { --cover-a:#155739; --cover-b:#62b38a; --cover-c:#277952; --page-a:#d8eadd; --page-b:#a6cbb5; --slot-a:#c1dfcb; --slot-b:#8dbba0; --ink:#315f45; }
+#carpeta[data-paleta="blue"]      { --cover-a:#193d91; --cover-b:#6d9def; --cover-c:#2855b6; --page-a:#dce6f8; --page-b:#adc3e8; --slot-a:#c8d9f4; --slot-b:#94b1df; --ink:#33588e; }
+#carpeta[data-paleta="black"]     { --cover-a:#111215; --cover-b:#47484d; --cover-c:#1e1f23; --page-a:#55565e; --page-b:#33343c; --slot-a:#494b55; --slot-b:#272930; --ink:#dde0e9; }
+/* Gamas oscuras: fundas y pespuntes más discretos. */
+#carpeta.oscuro .hueco::before { background: linear-gradient(121deg, rgba(255,255,255,.22), rgba(239,244,255,.03) 29%, rgba(201,215,231,.03) 70%, rgba(248,249,255,.19)); border-color: rgba(255,255,255,.18); }
+#carpeta.oscuro .hoja::before { opacity: .35; }
+#carpeta.oscuro .hoja { border-color: rgba(255,255,255,.18); }
+
+/* ---- La portada (cargarPagina() en app.js): sin huecos, solo el nombre ---- */
+.hoja.portada {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.portada-cara { padding: 1rem; position: relative; z-index: 1; }
+.portada-nombre { margin: 0 0 .4rem; font-size: 1.3rem; color: var(--ink); }
+.portada-meta { margin: 0; font-size: .85rem; color: var(--ink); opacity: .7; }
+
+/* ---- Anillas y ojales en el lomo (binder.js › lomoHTML(), ver index.html) ---- */
+.lomo { position: absolute; z-index: 6; pointer-events: none; top: 24px; bottom: 28px; left: 50%; width: 0; }
+.lomo .ojal {
+  position: absolute; width: 10px; height: 13px; border-radius: 50%; transform: translate(-50%,-50%);
+  background: radial-gradient(ellipse, #343845 0 24%, #b0b6c5 30%, #f7f9ff 40%, #949bac 55%, #e4e8f2 65%, rgba(255,255,255,.33) 70%);
+  box-shadow: 0 1px 2px rgba(60,55,75,.25);
+}
+.lomo .ojal.izq { left: calc(var(--lomo, 34px) / -2 - 11px); }
+.lomo .ojal.der { left: calc(var(--lomo, 34px) / 2 + 11px); }
+.lomo .anilla {
+  position: absolute; left: 0; width: calc((var(--lomo, 34px) + 22px) / .72); height: auto; aspect-ratio: 100/52;
+  overflow: visible; transform: translate(-52%,-63%); filter: drop-shadow(0 1px 1px rgba(48,50,65,.35));
+}
+.lomo .a1 { top: 13%; } .lomo .a2 { top: 50%; } .lomo .a3 { top: 87%; }
+
+/*
+ * ---- El giro de página de verdad (binder.js › animarPasada(), pasar() en
+ * app.js lo monta) ----
+ *
+ * Dos caras con backface-visibility:hidden: por delante, la hoja tal cual
+ * estaba (clonada ANTES de que cargarPagina() cambie nada); por detrás, la
+ * página de destino (pedida aparte, para que al llegar al otro lado del giro
+ * ya haya algo que enseñar y no un hueco en blanco). Cada cara solo se ve en
+ * su mitad del giro —el truco de primera-mitad/segunda-mitad: algunos
+ * navegadores no respetan backface-visibility cuando dentro hay cartas con
+ * su propio 3D (el .perspective-card de brillo.css), y la de delante se
+ * transparentaba por detrás—, y un ::after se oscurece justo cuando la hoja
+ * está de canto, que es el momento en que de verdad tapa la luz.
+ */
+/* En absoluto dentro de #carpeta, colgada de ella (pasar() en app.js) —como
+   el original (binder.js › animarPasada(), cuelga de .spread)—: así hereda
+   sin más las variables de color de la gama (--page-a, --slot-a, --ink...),
+   que son descendencia desde #carpeta y no le llegarían desde fuera de su
+   árbol, y se mueve CON #carpeta si ésta se desplazara a media animación,
+   en vez de quedarse plantada en una coordenada de ventana ya vieja. */
+.hoja-giro { position: absolute; z-index: 9; pointer-events: none; transform-style: preserve-3d; will-change: transform; }
+.hoja-giro > .cara { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; will-change: transform; }
+.hoja-giro > .cara > .hoja { width: 100%; height: 100%; margin: 0; }
+/* El lado que el giro deja tapado (pasar() en app.js): se esconde el real
+   (visibility:hidden) y esta quieta ocupa su sitio con el contenido VIEJO,
+   en absoluto dentro de #carpeta por el mismo motivo que .hoja-giro. Por
+   debajo del giro (z-index más bajo) pero por encima de todo lo demás. */
+.hoja-quieta { position: absolute; z-index: 8; pointer-events: none; }
+.hoja-quieta > .cara { position: absolute; inset: 0; }
+.hoja-quieta > .cara > .hoja { width: 100%; height: 100%; margin: 0; }
+.hoja-giro > .cara.detras { transform: rotateY(180deg); }
+.hoja-giro > .cara::after {
+  content: ""; position: absolute; inset: 0; z-index: 5; border-radius: 14px; pointer-events: none;
+  background: #141a33; opacity: 0;
+}
+/* Ya no hace falta ganarle en especificidad a la animación de entrada en
+   cascada de mejoras.css (m-sube, para todo hijo directo de .hojas): desde
+   que .hoja-giro cuelga de <body> y no de #hojas —por la posición fija de
+   más arriba—, esa regla ni siquiera lo alcanza. */
+.hoja-giro.sig { transform-origin: calc(var(--lomo, 34px) / -2) 50%; animation: giro-sig .8s linear forwards; }
+.hoja-giro.ant { transform-origin: calc(100% + var(--lomo, 34px) / 2) 50%; animation: giro-ant .8s linear forwards; }
+.hoja-giro > .cara.delante { animation: primera-mitad .8s linear forwards; }
+.hoja-giro > .cara.detras  { animation: segunda-mitad .8s linear forwards; }
+/* visibility sola bastaría, pero en algunos renderizados por software la
+   cara de atrás se alcanza a pintar igual un instante aunque el navegador
+   ya la marque "hidden" —se ve como la rejilla de cartas duplicada y
+   aplastada justo al empezar el giro—. opacity además de visibility es más
+   dificil de saltarse: dos motivos distintos para no pintar nada. */
+@keyframes primera-mitad { 0%, 49.9% { visibility: visible; opacity: 1; } 50%, 100% { visibility: hidden; opacity: 0; } }
+@keyframes segunda-mitad { 0%, 49.9% { visibility: hidden; opacity: 0; } 50%, 100% { visibility: visible; opacity: 1; } }
+.hoja-giro > .cara.delante::after { animation: cara-se-va .8s linear forwards; }
+.hoja-giro > .cara.detras::after { animation: cara-llega .8s linear forwards; }
+@keyframes giro-sig {
+  0% { transform: perspective(2600px) rotateY(0); animation-timing-function: cubic-bezier(.5,0,1,1); }
+  50% { transform: perspective(2600px) rotateY(-90deg); animation-timing-function: cubic-bezier(0,0,.4,1); }
+  100% { transform: perspective(2600px) rotateY(-180deg); }
+}
+@keyframes giro-ant {
+  0% { transform: perspective(2600px) rotateY(0); animation-timing-function: cubic-bezier(.5,0,1,1); }
+  50% { transform: perspective(2600px) rotateY(90deg); animation-timing-function: cubic-bezier(0,0,.4,1); }
+  100% { transform: perspective(2600px) rotateY(180deg); }
+}
+@keyframes cara-se-va { 0% { opacity: 0; } 50% { opacity: .28; } 100% { opacity: .28; } }
+@keyframes cara-llega { 0%, 50% { opacity: .28; } 100% { opacity: 0; } }
+
+/*
+ * La portada de por medio (pasar() en app.js, rama "sale"): sin pareja al
+ * otro lado no hay con qué montar una cara de detrás que encaje, así que
+ * cada hoja se va sola —solo cara de delante, hasta quedar de canto y
+ * desvanecerse— dejando ver lo que ya estaba cambiado debajo. Es más corta
+ * (.6s) y más simple que el giro de libro a propósito: la portada es un
+ * caso aparte, no una pareja rota.
+ */
+.hoja-giro.sale.sig { transform-origin: 0 50%; animation: sale-sig .6s cubic-bezier(.5,0,.75,.4) forwards; }
+.hoja-giro.sale.ant { transform-origin: 100% 50%; animation: sale-ant .6s cubic-bezier(.5,0,.75,.4) forwards; }
+.hoja-giro.sale.tarde { animation-delay: .07s; }
+.hoja-giro.sale > .cara.delante::after { animation: cara-se-va .6s ease-in forwards; }
+/* La regla de arriba (para el giro de libro, que dura .8s) también le caía
+   a esta cara por el mismo selector ".hoja-giro > .cara.delante": a los
+   400ms —la mitad de ESA duración, no de la de aquí— la hacía invisible de
+   golpe, antes incluso de que el giro de .6s hubiera terminado de doblarse
+   o desvanecerse. Aquí no hace falta alternar visibilidad —no hay una
+   segunda cara con la que coordinarse, es la única—, así que se anula. */
+.hoja-giro.sale > .cara.delante { animation: none; }
+@keyframes sale-sig { from { transform: perspective(1500px) rotateY(0); } to { transform: perspective(1500px) rotateY(-90deg); } }
+@keyframes sale-ant { from { transform: perspective(1500px) rotateY(0); } to { transform: perspective(1500px) rotateY(90deg); } }
+
+/*
+ * Esto es lo que faltaba de verdad: en móvil las hojas se apilan una
+ * encima de otra (.hojas.abierto{flex-direction:column}, en estilo.css,
+ * mismo punto de corte de 46rem), así que girar sobre el eje VERTICAL
+ * (rotateY, el de escritorio) no tiene ningún sentido —la hoja es alta y
+ * estrecha, y un giro pensado para una pareja lado a lado se ve
+ * descolocado, como si la página se desplomara hacia abajo en vez de
+ * girar—. Con las hojas apiladas, el giro tiene que ser sobre el eje
+ * HORIZONTAL (rotateX): la de arriba cae hacia abajo, la de abajo sube.
+ */
+@media (max-width: 46rem) {
+  .hoja-giro.sale.sig { transform-origin: 50% 0; animation-name: sale-sig-v; }
+  .hoja-giro.sale.ant { transform-origin: 50% 100%; animation-name: sale-ant-v; }
+  .hoja-giro > .cara.detras { transform: rotateX(180deg); }
+  .hoja-giro.sig:not(.sale) { transform-origin: 50% calc(var(--lomo, 34px) / -2); animation-name: giro-sig-v; }
+  .hoja-giro.ant:not(.sale) { transform-origin: 50% calc(100% + var(--lomo, 34px) / 2); animation-name: giro-ant-v; }
+}
+@keyframes sale-sig-v { from { transform: perspective(1500px) rotateX(0); } to { transform: perspective(1500px) rotateX(90deg); } }
+@keyframes sale-ant-v { from { transform: perspective(1500px) rotateX(0); } to { transform: perspective(1500px) rotateX(-90deg); } }
+@keyframes giro-sig-v {
+  0% { transform: perspective(2600px) rotateX(0); animation-timing-function: cubic-bezier(.5,0,1,1); }
+  50% { transform: perspective(2600px) rotateX(90deg); animation-timing-function: cubic-bezier(0,0,.4,1); }
+  100% { transform: perspective(2600px) rotateX(180deg); }
+}
+@keyframes giro-ant-v {
+  0% { transform: perspective(2600px) rotateX(0); animation-timing-function: cubic-bezier(.5,0,1,1); }
+  50% { transform: perspective(2600px) rotateX(-90deg); animation-timing-function: cubic-bezier(0,0,.4,1); }
+  100% { transform: perspective(2600px) rotateX(-180deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hoja-giro { display: none; }
+}
+
+/*
+ * ---- Pasar página desde el propio borde (binder.js › pasaPaginas()) ----
+ * Una franja en cada margen exterior de la tapa, con la punta de la hoja
+ * doblada abajo —crece al pasar el ratón— y una flecha que se queda a media
+ * altura de la pantalla mientras el álbum ocupa ese tramo. Llaman al mismo
+ * pasar(-1)/pasar(1) de siempre; no sustituyen los botones Anterior/
+ * Siguiente, son otra forma de pulsarlos.
+ */
+#carpeta.album { --pad-x: 22px; --pad-b: 28px; --punta: 30px; }
+#carpeta.album > .pasar {
+  all: unset; position: absolute; z-index: 7; top: 0; bottom: 0; width: calc(var(--pad-x) + 14px); box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent; transition: background .2s; cursor: pointer;
+}
+#carpeta.album > .pasar[hidden] { display: none; }
+#carpeta.album > .pasar.izq { left: 0; border-radius: 28px 0 0 28px; }
+#carpeta.album > .pasar.der { right: 0; border-radius: 0 28px 28px 0; }
+#carpeta.album > .pasar.izq:hover { background: linear-gradient(90deg, rgba(11,27,61,.10), transparent); }
+#carpeta.album > .pasar.der:hover { background: linear-gradient(270deg, rgba(11,27,61,.10), transparent); }
+#carpeta.album > .pasar:focus-visible { outline: 2px solid #3b6cff; outline-offset: -4px; }
+/* La punta doblada: debajo asoma la tapa y encima queda el reverso de la hoja, con su sombra. */
+#carpeta.album > .pasar .doblez { position: absolute; bottom: var(--pad-b); width: var(--punta); height: var(--punta); transition: width .22s ease, height .22s ease; }
+#carpeta.album > .pasar.izq .doblez { left: var(--pad-x); }
+#carpeta.album > .pasar.der .doblez { right: var(--pad-x); transform: scaleX(-1); }
+#carpeta.album > .pasar .doblez::before, #carpeta.album > .pasar .doblez::after { content: ""; position: absolute; inset: 0; }
+#carpeta.album > .pasar .doblez::before {
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+  background: linear-gradient(45deg, var(--page-b), var(--page-a)); box-shadow: inset 4px -4px 7px rgba(30,34,60,.3);
+}
+#carpeta.album > .pasar .doblez::after {
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+  background: linear-gradient(225deg, var(--page-b) 10%, var(--page-a) 55%, #fff 97%);
+  filter: drop-shadow(-3px 3px 4px rgba(30,34,60,.5)); border-radius: 0 0 0 4px;
+}
+#carpeta.album > .pasar:hover .doblez, #carpeta.album > .pasar:active .doblez { width: calc(var(--punta) * 1.55); height: calc(var(--punta) * 1.55); }
+/* La primera vez que se abre un binder, la punta de "siguiente" se levanta un momento para que se descubra. */
+#carpeta.album > .pasar.asoma .doblez { animation: punta-asoma 1.3s .9s ease-in-out; }
+@keyframes punta-asoma { 0%, 100% { width: var(--punta); height: var(--punta); } 40%, 60% { width: calc(var(--punta) * 1.8); height: calc(var(--punta) * 1.8); } }
+/* Flecha ‹ › en cada borde: se queda a media pantalla mientras el álbum pasa por ella. */
+#carpeta.album > .pasar .flecha {
+  position: sticky; top: calc(50vh - 28px); display: flex; align-items: center; justify-content: center;
+  width: calc(var(--pad-x) - 4px); height: 56px; margin: 140px 0 0 2px; box-sizing: border-box; border-radius: 99px; color: #0b1b3d;
+  background: rgba(255,255,255,.62); border: 1px solid rgba(255,255,255,.9); box-shadow: 0 2px 8px rgba(30,34,60,.18);
+  opacity: .8; transition: opacity .2s, transform .2s, background .2s;
+}
+#carpeta.album > .pasar.der .flecha { margin-left: auto; margin-right: 2px; }
+#carpeta.album > .pasar .flecha svg { width: 8px; height: 14px; }
+#carpeta.album > .pasar:hover .flecha { opacity: 1; background: #fff; }
+#carpeta.album > .pasar.izq:hover .flecha { transform: translateX(-2px); }
+#carpeta.album > .pasar.der:hover .flecha { transform: translateX(2px); }
+#carpeta.oscuro > .pasar .flecha { color: #e8ecf8; background: rgba(20,24,40,.55); border-color: rgba(255,255,255,.18); }
+#carpeta.oscuro > .pasar .doblez::after { filter: drop-shadow(-3px 3px 4px rgba(0,0,0,.6)); }
+@media (hover: none) { #carpeta.album > .pasar:hover { background: none; } }
+@media (prefers-reduced-motion: reduce) {
+  #carpeta.album > .pasar .doblez { transition: none; animation: none !important; }
+}
+@media (max-width: 46rem) {
+  #carpeta.album { --pad-x: 12px; --pad-b: 18px; --punta: 34px; }
+  #carpeta.album > .pasar { width: calc(var(--pad-x) + 8px); }
+  #carpeta.album > .pasar.izq { border-radius: 22px 0 0 22px; }
+  #carpeta.album > .pasar.der { border-radius: 0 22px 22px 0; }
+  #carpeta.album > .pasar .flecha { height: 46px; margin-left: 1px; }
+  #carpeta.album > .pasar.der .flecha { margin-right: 1px; }
+  #carpeta.album > .pasar .flecha svg { width: 7px; height: 12px; }
+}
+
+/* ---- Arrastrar: la carta «fantasma» que sigue al dedo o al ratón ----
+   En ratón es la imagen que pasa a setDragImage() en dragstart (una
+   instantánea; el propio navegador la mueve, no hay que seguir nada a
+   mano); en táctil, donde no hay drag nativo, montarEnHoja() en app.js la
+   coloca a mano en cada touchmove. Misma clase, mismo aspecto en los dos
+   casos. */
+.cfantasma {
+  position: fixed; left: 0; top: 0; z-index: 100; pointer-events: none; opacity: .92;
+  filter: drop-shadow(0 14px 24px rgba(0,0,0,.6));
+  border-radius: 4.5%/3.2%; overflow: hidden;
+}
+.cfantasma img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+@media (max-width: 46rem) {
+  #carpeta.album { --lomo: 30px; padding: 16px 12px 18px; border-radius: 22px; }
+  #carpeta.album::before { inset: 6px; border-radius: 17px; }
+  .hoja { padding: 12px 10px 14px; }
+  .hojas.abierto .hoja:first-child,
+  .hojas.abierto .hoja:last-child { border-radius: 14px 14px 8px 8px; }
+}

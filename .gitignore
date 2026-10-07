@@ -32,3 +32,9 @@ public/img/*.svg
 
 # El tema que elige cada usuario. Es suyo, como su coleccion.
 data/temas.json
+
+*.bak
+*.bak-*
+*.pre-*.bak
+*.antes-*
+*.log

@@ -58,7 +58,23 @@ async function cambiarClave(id, clave) {
 const listar = () =>
   db.prepare('SELECT * FROM usuarios ORDER BY creado').all().map(publico);
 
+/* Para "Agregar amigo": por nombre de usuario/nombre visible, o por id si lo
+   que se escribe son solo dígitos. Sin acentos ni mayúsculas de por medio
+   porque el buscador los admite igual de uno u otro lado. */
+function buscar(q, excluirId, limite = 20) {
+  q = String(q || '').trim();
+  if (!q) return [];
+  if (/^\d+$/.test(q)) {
+    const u = porId(Number(q));
+    return u && u.id !== excluirId ? [publico(u)] : [];
+  }
+  return db.prepare(
+    `SELECT * FROM usuarios WHERE id <> ? AND (usuario LIKE ? OR nombre LIKE ?)
+     ORDER BY usuario LIMIT ?`
+  ).all(excluirId, `%${q}%`, `%${q}%`, limite).map(publico);
+}
+
 module.exports = {
   VALIDO, MINIMO_CLAVE, porNombre, porId, cuantos, publico,
-  crear, verificarClave, anotarAcceso, cambiarClave, listar,
+  crear, verificarClave, anotarAcceso, cambiarClave, listar, buscar,
 };
